@@ -47,6 +47,7 @@ type NextClassMapped = {
 type OnboardingData = {
   contract: { status: OnboardingVariant; label: string };
   placement: { status: OnboardingVariant; label: string };
+  course?: { status: OnboardingVariant; label: string; link: string };
 };
 
 type CurriculumStats = {
@@ -123,6 +124,7 @@ export function StudentProfileClient({
             <OnboardingStatusCard
               contract={onboardingData.contract}
               placement={onboardingData.placement}
+              course={onboardingData.course}
             />
             <Badges proficiencies={proficiencies} />
           </div>

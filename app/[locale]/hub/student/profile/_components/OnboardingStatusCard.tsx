@@ -123,9 +123,14 @@ interface OnboardingStatusCardProps {
     status: OnboardingVariant;
     label: string;
   };
+  course?: {
+    status: OnboardingVariant;
+    label: string;
+    link: string;
+  };
 }
 
-export function OnboardingStatusCard({ contract, placement }: OnboardingStatusCardProps) {
+export function OnboardingStatusCard({ contract, placement, course }: OnboardingStatusCardProps) {
   return (
     <div className="w-full flex flex-col gap-3">
       <StatusItem
@@ -138,6 +143,13 @@ export function OnboardingStatusCard({ contract, placement }: OnboardingStatusCa
         text={placement.label}
         link="/hub/student/placement"
       />
+      {course && (
+        <StatusItem
+          variant={course.status}
+          text={course.label}
+          link={course.link}
+        />
+      )}
     </div>
   );
 }

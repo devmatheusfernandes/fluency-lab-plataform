@@ -280,6 +280,20 @@ export const courseService = {
     return courseRepository.findQuizzesByCourse(courseId);
   },
 
+  /**
+   * Returns the enrollment status of a specific student for a specific course.
+   * Used in the profile page onboarding status card.
+   * - "success": enrolled and completed
+   * - "warning": enrolled but not yet completed
+   * - "pending": not enrolled
+   */
+  async getStudentCourseStatus(userId: string, courseId: string): Promise<"success" | "warning" | "pending"> {
+    const enrollment = await courseRepository.findEnrollment(userId, courseId);
+    if (!enrollment) return "pending";
+    if (enrollment.completed) return "success";
+    return "warning";
+  },
+
   async submitQuiz(user: User, quizId: string, answers: Record<string, string>) {
     if (!hasPermission(user, "course.learn")) {
       throw new Error("Unauthorized");

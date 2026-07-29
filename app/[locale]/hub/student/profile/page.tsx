@@ -3,6 +3,7 @@ import { userService } from "@/modules/user/user.service";
 import { schedulingService } from "@/modules/scheduling/scheduling.service";
 import { contractService } from "@/modules/contract/contract.service";
 import { learningService } from "@/modules/learning/learning.service";
+import { courseService } from "@/modules/course/course.service";
 import { redirect } from "next/navigation";
 import { placementRepository } from "@/modules/placement/placement.repository";
 import { getStudentProficiencies } from "@/utils/proficiency";
@@ -10,20 +11,24 @@ import { type OnboardingVariant } from "./_components/OnboardingStatusCard";
 import { type PlacementTest } from "@/modules/placement/placement.schema";
 import { StudentProfileClient } from "./_components/StudentProfileClient";
 
+/** Course ID that exists only in production — kept server-side to avoid leaking in the client bundle. */
+const WELCOME_COURSE_ID = "0ece3db9-ccb1-4e8f-bd46-6f649d010762";
+
 export default async function ProfilePage() {
     const user = await getCurrentUser();
 
     if (!user) redirect("/signin");
     if (!user.onboarded) redirect("/onboarding");
 
-    const [, nextClass, activeContract, curriculumStats, activePayment, learningStats, placementHistory] = await Promise.all([
+    const [, nextClass, activeContract, curriculumStats, activePayment, learningStats, placementHistory, courseStatus] = await Promise.all([
         userService.getLevelInfo(user.currentEloScore),
         schedulingService.findNextClassForStudent(user.id),
         contractService.getActiveContract(user.id),
         learningService.getStudentCurriculumGap(user.id),
         import("@/modules/billing/billing.service").then(m => m.billingService.getStudentPaymentStatus(user.id)),
         learningService.getStudentLearningStats(user.id),
-        placementRepository.getTestHistory(user.id)
+        placementRepository.getTestHistory(user.id),
+        courseService.getStudentCourseStatus(user.id, WELCOME_COURSE_ID),
     ]);
 
     const subscriptionData = activePayment;
@@ -74,7 +79,12 @@ export default async function ProfilePage() {
         placement: {
             status: (user.lastPlacementTestDate ? "success" : (placementHistory.some(t => t.status === "in_progress") ? "warning" : "pending")) as OnboardingVariant,
             label: user.lastPlacementTestDate ? "placement_done" : (placementHistory.some(t => t.status === "in_progress") ? "placement_progress" : "placement_pending")
-        }
+        },
+        course: {
+            status: courseStatus as OnboardingVariant,
+            label: courseStatus === "success" ? "course_completed" : courseStatus === "warning" ? "course_in_progress" : "course_pending",
+            link: `/hub/student/courses/${WELCOME_COURSE_ID}`,
+        },
     };
 
     const proficiencies = getStudentProficiencies(user, placementHistory as (PlacementTest & { language: { code: string } })[]);
