@@ -2,13 +2,13 @@
 
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Lock, UserMinus, CheckCircle2, Copy } from "lucide-react";
+import { AlertTriangle, Lock, UserMinus, CheckCircle2, Copy, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionLabel } from "./UserDetailsPrimitives";
 import { notify } from "@/components/ui/toaster";
-import { requestStudentDeactivationAction } from "@/modules/user/user.actions";
+import { requestStudentDeactivationAction, resendInviteAction } from "@/modules/user/user.actions";
 import { Badge } from "@/components/ui/badge";
 import type { SubscriptionWithPlan, Installment } from "../../../billing/billing.types";
 import { useEffect } from "react";
@@ -16,6 +16,9 @@ import { useEffect } from "react";
 interface ActionsTabProps {
   userId: string;
   userName: string;
+  userEmail: string;
+  userLocale: "pt" | "en";
+  userRole: string;
   isActive: boolean;
   activeSubscription?: SubscriptionWithPlan | null;
   installments?: Installment[];
@@ -24,6 +27,9 @@ interface ActionsTabProps {
 export function ActionsTab({ 
   userId, 
   userName, 
+  userEmail,
+  userLocale,
+  userRole,
   isActive,
   activeSubscription,
   installments
@@ -31,6 +37,7 @@ export function ActionsTab({
   const t = useTranslations("UserManagement");
   const [password, setPassword] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [pixData, setPixData] = useState<{ pixCode: string; pixImage: string } | null>(null);
 
   useEffect(() => {
@@ -78,6 +85,25 @@ export function ActionsTab({
     }
   };
 
+  const handleResendInvite = async () => {
+    setIsResending(true);
+    const toastId = "resend-invite-toast";
+    notify.loading(t("sendingInvite") || "Enviando convite de acesso...", undefined, toastId);
+    try {
+      const result = await resendInviteAction({ email: userEmail, locale: userLocale });
+      if (result?.data?.success) {
+        notify.success(t("success") || "Sucesso", t("inviteSentSuccess") || "Novo convite de acesso enviado por E-mail e WhatsApp!", toastId);
+      } else {
+        notify.error(t("error") || "Erro", t("inviteSentError") || "Falha ao enviar convite.", toastId);
+      }
+    } catch (err) {
+      console.error(err);
+      notify.error(t("error") || "Erro", t("inviteProcessError") || "Erro ao processar o reenvio.", toastId);
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const copyPix = () => {
     if (pixData) {
       navigator.clipboard.writeText(pixData.pixCode);
@@ -99,83 +125,108 @@ export function ActionsTab({
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Resend Invite Section */}
       <div>
-        <SectionLabel>{t("accountActions")}</SectionLabel>
-        
-        <div className="card border-destructive/20 bg-destructive/[0.02] overflow-hidden">
-          <div className="px-6 py-5 border-b border-destructive/10 bg-destructive/[0.03] flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-destructive" />
-            <div>
-              <p className="text-sm font-black text-destructive tracking-tight uppercase">Zona de Perigo</p>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                Ações de alto impacto e irreversíveis
-              </p>
-            </div>
+        <SectionLabel>{t("invitationsAndAccess") || "Convites e Acesso"}</SectionLabel>
+        <div className="card p-6 flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <p className="font-bold text-sm">{t("resendAccessLink") || "Reenviar Link de Acesso"}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {t("resendAccessLinkDesc", { name: userName }) || `Envia um e-mail e uma mensagem de WhatsApp (se cadastrado) com as instruções para o primeiro acesso e definição de senha de ${userName}.`}
+            </p>
           </div>
-
-          <div className="p-6 flex flex-col gap-6">
-            {!pixData ? (
-              <>
-                <div className="flex flex-col gap-2">
-                  <p className="font-black text-sm tracking-tight">{t("deactivateStudent")}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {t("deactivateStudentDesc").replace("aluno", userName)}
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4 p-4 border rounded-md bg-background/50">
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                      <Lock className="w-3 h-3" />
-                      {t("sudoModeLabel")}
-                    </Label>
-                    <Input 
-                      type="password" 
-                      placeholder={t("adminPasswordPlaceholder")}
-                      className="h-11 font-medium"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-
-                  <Button 
-                    variant="destructive" 
-                    className="w-full gap-2 font-black text-xs uppercase tracking-[0.2em] h-12 shadow-sm"
-                    onClick={handleDeactivate}
-                    disabled={isPending || !password}
-                  >
-                    <UserMinus className="w-4 h-4 mr-2" />
-                    {isPending ? "..." : t("confirmDeactivation")}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col gap-6 items-center">
-                <div className="text-center">
-                  <Badge variant="outline" className="mb-2 font-black uppercase tracking-widest text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/20">{t("waitingPayment")}</Badge>
-                  <p className="font-black text-sm tracking-tight">{t("feeGenerated")}</p>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                    {t("feeGeneratedDesc")}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-white rounded-md shadow-sm border flex flex-col items-center gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={pixData.pixImage} alt="QR Code PIX" className="w-48 h-48" />
-                  <Button variant="outline" size="sm" className="w-full gap-2 font-bold text-[10px] uppercase tracking-widest" onClick={copyPix}>
-                    <Copy className="w-3 h-3" />
-                    {t("copyPix")}
-                  </Button>
-                </div>
-
-                <p className="text-[10px] text-center text-muted-foreground max-w-xs leading-relaxed">
-                  O aluno recebeu este QR Code via E-mail e WhatsApp. Você também pode acompanhá-lo na aba de Pagamentos.
-                </p>
-              </div>
-            )}
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-fit gap-2 font-bold text-xs uppercase tracking-wider h-10 px-4"
+            onClick={handleResendInvite}
+            disabled={isResending}
+          >
+            <Send className="w-3.5 h-3.5" />
+            {isResending ? (t("sending") || "Enviando...") : (t("resendInviteBtn") || "Reenviar Convite")}
+          </Button>
         </div>
       </div>
+
+      {userRole === "student" && (
+        <div>
+          <SectionLabel>{t("accountActions")}</SectionLabel>
+          
+          <div className="card border-destructive/20 bg-destructive/[0.02] overflow-hidden">
+            <div className="px-6 py-5 border-b border-destructive/10 bg-destructive/[0.03] flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <div>
+                <p className="text-sm font-black text-destructive tracking-tight uppercase">Zona de Perigo</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                  Ações de alto impacto e irreversíveis
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 flex flex-col gap-6">
+              {!pixData ? (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <p className="font-black text-sm tracking-tight">{t("deactivateStudent")}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {t("deactivateStudentDesc").replace("aluno", userName)}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-4 p-4 border rounded-md bg-background/50">
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                        <Lock className="w-3 h-3" />
+                        {t("sudoModeLabel")}
+                      </Label>
+                      <Input 
+                        type="password" 
+                        placeholder={t("adminPasswordPlaceholder")}
+                        className="h-11 font-medium"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </div>
+
+                    <Button 
+                      variant="destructive" 
+                      className="w-full gap-2 font-black text-xs uppercase tracking-[0.2em] h-12 shadow-sm"
+                      onClick={handleDeactivate}
+                      disabled={isPending || !password}
+                    >
+                      <UserMinus className="w-4 h-4 mr-2" />
+                      {isPending ? "..." : t("confirmDeactivation")}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col gap-6 items-center">
+                  <div className="text-center">
+                    <Badge variant="outline" className="mb-2 font-black uppercase tracking-widest text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/20">{t("waitingPayment")}</Badge>
+                    <p className="font-black text-sm tracking-tight">{t("feeGenerated")}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                      {t("feeGeneratedDesc")}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-md shadow-sm border flex flex-col items-center gap-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={pixData.pixImage} alt="QR Code PIX" className="w-48 h-48" />
+                    <Button variant="outline" size="sm" className="w-full gap-2 font-bold text-[10px] uppercase tracking-widest" onClick={copyPix}>
+                      <Copy className="w-3 h-3" />
+                      {t("copyPix")}
+                    </Button>
+                  </div>
+
+                  <p className="text-[10px] text-center text-muted-foreground max-w-xs leading-relaxed">
+                    O aluno recebeu este QR Code via E-mail e WhatsApp. Você também pode acompanhá-lo na aba de Pagamentos.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

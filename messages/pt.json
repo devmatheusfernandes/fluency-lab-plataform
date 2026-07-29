@@ -200,6 +200,7 @@
     "title": "Notificações"
   },
   "Auth": {
+    "firstAccessPrompt": "Primeiro acesso? Clique aqui",
     "accountExistsWithDifferentCredential": "Já existe uma conta com este e-mail usando outro método de login (ex: Google). Gostaria de vincular suas contas?",
     "accountSuspended": "Sua conta foi suspensa. Entre em contato com o administrador.",
     "back": "Voltar",
@@ -2529,6 +2530,15 @@
     "weekly": "Semanal"
   },
   "UserManagement": {
+    "invitationsAndAccess": "Convites e Acesso",
+    "resendAccessLink": "Reenviar Link de Acesso",
+    "resendAccessLinkDesc": "Envia um e-mail e uma mensagem de WhatsApp (se cadastrado) com as instruções para o primeiro acesso e definição de senha de {name}.",
+    "resendInviteBtn": "Reenviar Convite",
+    "sending": "Enviando...",
+    "sendingInvite": "Enviando convite de acesso...",
+    "inviteSentSuccess": "Novo convite de acesso enviado por E-mail e WhatsApp!",
+    "inviteSentError": "Falha ao enviar convite.",
+    "inviteProcessError": "Erro ao processar o reenvio.",
     "birthDate": "Data de Nascimento",
     "guardianName": "Nome do Responsável",
     "guardianTaxId": "CPF do Responsável",

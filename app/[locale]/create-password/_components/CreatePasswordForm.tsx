@@ -29,10 +29,10 @@ export function CreatePasswordForm() {
   const [codeValid, setCodeValid] = useState<boolean>(false);
   const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(!!oobCode);
-  const [error, setError] = useState<string>(!oobCode ? t("Auth.errors.invalidLink") : "");
+  const [error, setError] = useState<string>("");
 
   const [success, setSuccess] = useState<boolean>(false);
-  const [isExpired, setIsExpired] = useState<boolean>(false);
+  const [isExpired, setIsExpired] = useState<boolean>(!oobCode);
 
   // Password visibility states
   const [showPassword, setShowPassword] = useState<boolean>(false);

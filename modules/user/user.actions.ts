@@ -236,6 +236,25 @@ export const resendInviteAction = permissionAction("user.create")
         parsedInput.locale as "pt" | "en"
       );
 
+      const rawCellphone = user.cellphone && user.cellphone.includes(":")
+        ? decrypt(user.cellphone)
+        : user.cellphone;
+
+      if (rawCellphone) {
+        try {
+          await communicationService.sendWelcomeWhatsApp(
+            {
+              cellphone: rawCellphone,
+              name: user.name,
+              actionLink,
+            },
+            parsedInput.locale as "pt" | "en"
+          );
+        } catch (wsError) {
+          console.error("[resendInviteAction] WhatsApp invite fail:", wsError);
+        }
+      }
+
       return { success: true };
     } catch (error) {
       console.error("[resendInviteAction] Error:", error);
@@ -261,6 +280,25 @@ export const requestNewInviteAction = actionClient
         actionLink,
         user.locale as "pt" | "en"
       );
+
+      const rawCellphone = user.cellphone && user.cellphone.includes(":")
+        ? decrypt(user.cellphone)
+        : user.cellphone;
+
+      if (rawCellphone) {
+        try {
+          await communicationService.sendWelcomeWhatsApp(
+            {
+              cellphone: rawCellphone,
+              name: user.name,
+              actionLink,
+            },
+            user.locale as "pt" | "en"
+          );
+        } catch (wsError) {
+          console.error("[requestNewInviteAction] WhatsApp invite fail:", wsError);
+        }
+      }
 
       return { success: true };
     } catch (error) {

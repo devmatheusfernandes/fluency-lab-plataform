@@ -200,6 +200,7 @@
     "title": "Notifications"
   },
   "Auth": {
+    "firstAccessPrompt": "First access? Click here",
     "accountExistsWithDifferentCredential": "Já existe uma conta com este e-mail usando outro método de login (ex: Google). Gostaria de vincular suas contas?",
     "accountSuspended": "Your account has been suspended. Please contact your administrator.",
     "back": "Back",
@@ -2530,6 +2531,15 @@
     "weekly": "Weekly"
   },
   "UserManagement": {
+    "invitationsAndAccess": "Invitations & Access",
+    "resendAccessLink": "Resend Access Link",
+    "resendAccessLinkDesc": "Sends an email and a WhatsApp message (if registered) with instructions for the first access and password definition for {name}.",
+    "resendInviteBtn": "Resend Invite",
+    "sending": "Sending...",
+    "sendingInvite": "Sending access invitation...",
+    "inviteSentSuccess": "New access invitation sent via Email and WhatsApp!",
+    "inviteSentError": "Failed to send invitation.",
+    "inviteProcessError": "Error processing resend.",
     "birthDate": "Date of Birth",
     "guardianName": "Guardian Name",
     "guardianTaxId": "Guardian Tax ID",

@@ -249,12 +249,18 @@ export function SignInForm() {
         </Button>
       </form>
 
-      <div className="flex flex-col items-center mt-8">
+      <div className="flex flex-col items-center mt-8 gap-2.5">
         <a
           href={`/forgot-password`}
           className="text-sm text-primary hover:underline font-medium"
         >
           {t("forgotPassword") || "Esqueci minha senha"}
+        </a>
+        <a
+          href={`/create-password`}
+          className="text-xs text-muted-foreground hover:text-foreground hover:underline font-medium transition-colors"
+        >
+          {t("firstAccessPrompt") || "Primeiro acesso? Clique aqui"}
         </a>
       </div>
 

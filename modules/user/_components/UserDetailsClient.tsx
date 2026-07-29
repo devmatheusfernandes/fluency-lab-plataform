@@ -308,7 +308,7 @@ export function UserDetailsClient({
               </TabsTrigger>
             )}
 
-            {user.role === "student" && isAdmin && (
+            {isAdmin && (
               <TabsTrigger
                 value="actions"
                 className="shrink-0 data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:text-primary! data-[state=active]:border-none! focus-visible:ring-0 focus-visible:ring-offset-0 py-4"
@@ -402,11 +402,14 @@ export function UserDetailsClient({
           </TabsContent>
         )}
 
-        {user.role === "student" && isAdmin && (
+        {isAdmin && (
           <TabsContent value="actions" className="mt-4">
             <ActionsTab
               userId={user.id}
               userName={user.name || ""}
+              userEmail={user.email}
+              userLocale={(user.locale || "pt") as "pt" | "en"}
+              userRole={user.role}
               isActive={user.isActive ?? true}
               activeSubscription={activeSubscription}
               installments={installments}
