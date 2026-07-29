@@ -108,7 +108,7 @@ export function CoursePlayerClient({ courseData, enrollment, currentUser }: Cour
   const progressPercentage = allLessons.length > 0 ? Math.round((completedCount / allLessons.length) * 100) : 0;
 
   return (
-    <div className="flex flex-col h-screen w-full bg-white dark:bg-black overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-white dark:bg-black overflow-hidden">
       <Header
         title={courseData.course.title}
         showSubHeader={false}

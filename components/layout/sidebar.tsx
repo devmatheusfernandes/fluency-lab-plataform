@@ -63,7 +63,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
 
     //Para esconder a sidebar
     const isPracticeSession = pathname.includes("/hub/student/practice/session");
-    if (isPracticeSession) return null;
+    const isCoursePlayer = /\/(courses|my-courses)\/[^/]+$/.test(pathname);
+    if (isPracticeSession || isCoursePlayer) return null;
 
     return (
         <>
