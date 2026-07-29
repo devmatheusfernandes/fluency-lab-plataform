@@ -1108,7 +1108,7 @@
         "deise": {
           "bio": "Coordenadora de curso, gerencia a escola e os professores.",
           "name": "Deise Laiane",
-          "role": "Coordenadora de Curso",
+          "role": "CEO",
           "rating": "4.9 · 120 alunos"
         },
         "luara": {
@@ -1128,7 +1128,20 @@
           "name": "Giulia",
           "role": "Professora de Inglês",
           "rating": "4.8 · 110 alunos"
+        },
+        "lucas": {
+          "bio": "Professora de inglês, focada em gramática e conversação.",
+          "name": "Lucas",
+          "role": "Professor de Inglês",
+          "rating": "4.8 · 110 alunos"
+        },
+        "bianca": {
+          "bio": "Professora de inglês, focada no ensino dinâmico e interativo.",
+          "name": "Bianca",
+          "role": "Professora de Inglês",
+          "rating": "4.8 · 110 alunos"
         }
+
       },
       "tags": {
         "management": "Gestão",
@@ -1138,7 +1151,10 @@
         "native": "Nativo",
         "conversation": "Conversação",
         "kidsTeens": "Kids & Teens",
-        "english": "Inglês"
+        "english": "Inglês",
+        "grammar": "Gramática",
+        "kids": "Kids",
+        "dynamicAndInteractive": "Dinâmico e Interativo"
       },
       "mobileSwipe": "Deslize para ver →",
       "stats": {

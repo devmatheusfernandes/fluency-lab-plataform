@@ -1108,7 +1108,7 @@
         "deise": {
           "bio": "Course coordinator, manages the school and the teachers.",
           "name": "Deise Laiane",
-          "role": "Course Coordinator",
+          "role": "CEO",
           "rating": "4.9 · 120 students"
         },
         "luara": {
@@ -1128,7 +1128,20 @@
           "name": "Giulia",
           "role": "English Teacher",
           "rating": "4.8 · 110 students"
+        },
+        "lucas": {
+          "bio": "English teacher, focusing on grammar and conversation.",
+          "name": "Lucas",
+          "role": "English Teacher",
+          "rating": "4.8 · 110 students"
+        },
+        "bianca": {
+          "bio": "English teacher, focusing on dynamic and interactive teaching.",
+          "name": "Bianca",
+          "role": "English Teacher",
+          "rating": "4.8 · 110 students"
         }
+
       },
       "tags": {
         "management": "Management",
@@ -1138,7 +1151,10 @@
         "native": "Native",
         "conversation": "Conversation",
         "kidsTeens": "Kids & Teens",
-        "english": "English"
+        "english": "English",
+        "grammar": "Grammar",
+        "kids": "Kids",
+        "dynamicAndInteractive": "Dynamic and Interactive"
       },
       "mobileSwipe": "Swipe to see →",
       "stats": {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Globe } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +10,7 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import { useTranslations } from "next-intl";
 import { containerVariants, itemVariants } from "@/lib/animations";
@@ -74,10 +76,48 @@ const TutorCard = ({ member }: { member: TeamMember }) => (
 export default function TeamSection() {
   const t = useTranslations("LandingPage.Team");
 
+  const [api, setApi] = useState<CarouselApi>();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!api) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    let accumX = 0;
+    let lastScrollTime = 0;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Check if it's a dominant horizontal gesture (trackpad horizontal scroll)
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        e.preventDefault();
+        accumX += e.deltaX;
+
+        const now = Date.now();
+        if (now - lastScrollTime > 300) {
+          if (accumX > 30) {
+            api.scrollNext();
+            accumX = 0;
+            lastScrollTime = now;
+          } else if (accumX < -30) {
+            api.scrollPrev();
+            accumX = 0;
+            lastScrollTime = now;
+          }
+        }
+      }
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+    };
+  }, [api]);
+
   const team: TeamMember[] = [
     {
       name: t("members.deise.name") || "Deise Laiane",
-      role: t("members.deise.role") || "Coordenadora de Curso",
+      role: t("members.deise.role") || "CEO",
       image: "/images/team/deise.png",
       bio: t("members.deise.bio") || "Coordenadora de curso, gerencia a escola e os professores.",
       lang: "🇧🇷",
@@ -119,48 +159,74 @@ export default function TeamSection() {
         t("tags.english") || "Inglês"
       ],
     },
+        {
+      name: t("members.giulia.name") || "Lucas",
+      role: t("members.giulia.role") || "Professor de Inglês",
+      image: "/images/team/lucas.png",
+      bio: t("members.giulia.bio") || "Professor de inglês, focado em gramática e conversação.",
+      lang: "🇧🇷 🇺🇸",
+      tags: [
+        t("tags.grammar") || "Gramática", 
+        t("tags.conversation") || "Conversação"
+      ],
+    },
+        {
+      name: t("members.giulia.name") || "Bianca",
+      role: t("members.giulia.role") || "Professora de Inglês",
+      image: "/images/team/bianca.png",
+      bio: t("members.giulia.bio") || "Professora de inglês, focada no ensino dinamico e interativo.",
+      lang: "🇧🇷 🇺🇸",
+      tags: [
+        t("tags.kidsTeens") || "Kids", 
+        t("tags.english") || "Inglês"
+      ],
+    },
   ];
 
   return (
     <section className="py-6 overflow-hidden">
       <div className="px-4 mx-auto max-w-7xl">
         <div className="flex flex-col lg:flex-row items-start gap-16 lg:gap-24">
-          <div className="w-full lg:w-1/2 order-2 lg:order-1">
-            <div className="block lg:hidden">
-              <Carousel
-                opts={{ align: "start", loop: true }}
-                className="w-full max-w-sm mx-auto"
-              >
-                <CarouselContent>
-                  {team.map((member, index) => (
-                    <CarouselItem
-                      key={index}
-                      className="basis-1/2 sm:basis-1/2"
-                    >
-                      <TutorCard member={member} />
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <div className="flex justify-center mt-4 gap-2">
-                  <span className="text-xs text-slate-300/45">
-                    {t("mobileSwipe") || "Deslize para ver →"}
-                  </span>
-                </div>
-              </Carousel>
-            </div>
-
+          <div ref={containerRef} className="w-full lg:w-1/2 order-2 lg:order-1">
             <motion.div
               variants={containerVariants}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
-              className="hidden lg:grid grid-cols-2 gap-x-4 gap-y-8"
             >
-              {team.map((member, index) => (
-                <motion.div key={index} variants={itemVariants}>
-                  <TutorCard member={member} />
-                </motion.div>
-              ))}
+              <Carousel
+                setApi={setApi}
+                opts={{ align: "start", loop: true }}
+                className="w-full cursor-grab active:cursor-grabbing"
+              >
+                <CarouselContent className="py-4">
+                  {team.map((member, index) => (
+                    <CarouselItem
+                      key={index}
+                      className="basis-[75%] sm:basis-[43%]"
+                    >
+                      <motion.div variants={itemVariants} className="h-full">
+                        {index === 2 ? (
+                          <motion.div
+                            animate={{ x: [0, -8, 8, -5, 5, 0] }}
+                            transition={{
+                              repeat: Infinity,
+                              repeatDelay: 3.5,
+                              duration: 1.5,
+                              ease: "easeInOut",
+                            }}
+                            className="h-full"
+                          >
+                            <TutorCard member={member} />
+                          </motion.div>
+                        ) : (
+                          <TutorCard member={member} />
+                        )}
+                      </motion.div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
             </motion.div>
           </div>
 
@@ -192,7 +258,7 @@ export default function TeamSection() {
               <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Button
                   size="lg"
-                  className="rounded-full px-8 text-base font-semibold transition-all hover:scale-105"
+                  className="rounded-full px-8 text-base font-semibold transition-all hover:scale-105 z-1!"
                 >
                   {t("cta") || "Quero marcar uma aula teste"}
                 </Button>
