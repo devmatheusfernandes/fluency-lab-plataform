@@ -301,7 +301,17 @@ export function MessageBubble({ msg, templates = [] }: MessageBubbleProps) {
             isOut ? "text-[#111b21] dark:text-[#e9edef]" : "text-muted-foreground"
           )}
         >
-          {format(new Date(msg.createdAt), "HH:mm")}
+          {(() => {
+            try {
+              //eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const rawDate = msg.createdAt || (msg as any).created_at;
+              const dateVal = rawDate ? new Date(rawDate) : new Date();
+              return isNaN(dateVal.getTime()) ? "" : format(dateVal, "HH:mm");
+            } catch (err) {
+              console.error("[MessageBubble] Error formatting time:", err);
+              return "";
+            }
+          })()}
           {isOut && (
             msg.status === "read" ? (
               <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />

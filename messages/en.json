@@ -265,7 +265,7 @@
     "notifications": {
       "passwordSet": "Password set!",
       "passwordSetSuccess": "Password set successfully!",
-      "resendSuccess": "New link sent! Check your inbox."
+      "resendSuccess": "If the email is associated with an account, a new link has been sent! Check your email and WhatsApp."
     },
     "notInvited": "This email has not been invited to the platform. Please contact your administrator.",
     "orContinueWithGoogle": "Or continue with Google",

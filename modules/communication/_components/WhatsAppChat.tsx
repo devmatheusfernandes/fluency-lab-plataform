@@ -239,6 +239,14 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
     selectedConv ? `whatsapp-messages-${selectedConv.id}` : null,
     async () => {
       const result = await getWhatsAppMessagesAction({ conversationId: selectedConv!.id });
+      console.log("[WhatsAppChat SWR messages] conversationId:", selectedConv!.id, "result:", result);
+      if (result?.serverError) {
+        console.error("[WhatsAppChat SWR messages] Server error:", result.serverError);
+        notify.error("Erro ao carregar mensagens: " + result.serverError);
+      }
+      if (result?.validationErrors) {
+        console.error("[WhatsAppChat SWR messages] Validation errors:", result.validationErrors);
+      }
       return (result?.data || []).reverse();
     },
     { refreshInterval: 3000 }
@@ -862,13 +870,36 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
                   ) : (
                     messages?.map((msg: WhatsAppMessage, idx: number) => {
                       const prev = messages[idx - 1];
-                      const showDate =
-                        !prev ||
-                        new Date(msg.createdAt).toDateString() !==
-                          new Date(prev.createdAt).toDateString();
+                      let showDate = false;
+                      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const msgDateRaw = msg.createdAt || (msg as any).created_at;
+                      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const prevDateRaw = prev ? (prev.createdAt || (prev as any).created_at) : null;
+                      
+                      if (msgDateRaw) {
+                        if (!prevDateRaw) {
+                          showDate = true;
+                        } else {
+                          try {
+                            showDate = new Date(msgDateRaw).toDateString() !== new Date(prevDateRaw).toDateString();
+                          } catch {
+                            showDate = true;
+                          }
+                        }
+                      }
+
                       return (
                         <div key={msg.id} className="animate-in fade-in slide-in-from-bottom-1 duration-150">
-                          {showDate && <TimestampPill date={new Date(msg.createdAt)} />}
+                          {showDate && msgDateRaw && (
+                            (() => {
+                              try {
+                                const d = new Date(msgDateRaw);
+                                return isNaN(d.getTime()) ? null : <TimestampPill date={d} />;
+                              } catch {
+                                return null;
+                              }
+                            })()
+                          )}
                           <MessageBubble msg={msg} templates={templates} />
                         </div>
                       );

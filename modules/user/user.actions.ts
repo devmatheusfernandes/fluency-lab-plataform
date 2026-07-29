@@ -271,7 +271,8 @@ export const requestNewInviteAction = actionClient
       if (!limit.success) throw new Error("RATE_LIMIT_EXCEEDED");
 
       const user = await userService.getUserByEmail(parsedInput.email);
-      if (!user) return { success: false, error: "userNotFound" };
+      // Silent safety: if user does not exist, return success to prevent email discovery
+      if (!user) return { success: true };
 
       const actionLink = await generateInviteLink(user.email);
       await communicationService.sendResendInviteEmail(

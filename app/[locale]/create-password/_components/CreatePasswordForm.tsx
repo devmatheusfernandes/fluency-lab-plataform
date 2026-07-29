@@ -266,7 +266,7 @@ export function CreatePasswordForm() {
                       <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                       <Input
                         placeholder={t("Auth.placeholders.email") || "Seu e-mail cadastrado"}
-                        className={`pl-10 h-11 rounded-md bg-gray-50 border-gray-200 ${resendErrors.email ? "border-destructive! focus-visible:ring-destructive!" : ""}`}
+                        className={`pl-10 h-11 ${resendErrors.email ? "border-destructive! focus-visible:ring-destructive!" : ""}`}
                         disabled={resending}
                         {...registerResend("email")}
                       />

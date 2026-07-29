@@ -265,7 +265,7 @@
     "notifications": {
       "passwordSet": "Senha definida!",
       "passwordSetSuccess": "Senha definida com sucesso!",
-      "resendSuccess": "Novo link enviado! Verifique sua caixa de entrada."
+      "resendSuccess": "Se o e-mail estiver associado a uma conta, um novo link foi enviado! Verifique seu e-mail e WhatsApp."
     },
     "notInvited": "Este e-mail não foi convidado para a plataforma. Entre em contato com o administrador.",
     "orContinueWithGoogle": "Ou continue com Google",

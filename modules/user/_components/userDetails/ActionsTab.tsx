@@ -138,11 +138,10 @@ export function ActionsTab({
           <Button
             type="button"
             variant="outline"
-            className="w-fit gap-2 font-bold text-xs uppercase tracking-wider h-10 px-4"
             onClick={handleResendInvite}
             disabled={isResending}
           >
-            <Send className="w-3.5 h-3.5" />
+            <Send className="w-3 h-3 mr-2" />
             {isResending ? (t("sending") || "Enviando...") : (t("resendInviteBtn") || "Reenviar Convite")}
           </Button>
         </div>
