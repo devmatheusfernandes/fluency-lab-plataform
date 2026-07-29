@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { format, isSameDay } from "date-fns";
 import {
@@ -27,9 +27,19 @@ import {
   updateSlotAction,
   checkSlotConflictAction,
   retimeRecurrenceAction,
+  updateClassStatusAction,
 } from "@/modules/scheduling/scheduling.actions";
+import { updateSlotStatusSchema } from "@/modules/scheduling/scheduling.schema";
+import { z } from "zod";
 import { getLessonsAction } from "@/modules/curriculum/curriculum.actions";
 import { CalendarEvent } from "@/components/ui/calendar-view";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Vault,
   VaultContent,
@@ -70,6 +80,7 @@ export function SlotDetailsVault({
   onSuccess,
 }: SlotDetailsVaultProps) {
   const t = useTranslations("UserManagement");
+  const tClasses = useTranslations("ClassesCard");
   const isMobile = useIsMobile();
   const router = useRouter();
 
@@ -78,8 +89,9 @@ export function SlotDetailsVault({
   const [showEditScope, setShowEditScope] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
-    type: "delete" | "edit" | null;
+    type: "delete" | "edit" | "status" | null;
     scope: "single" | "future" | null;
+    pendingStatus?: string;
   }>({ isOpen: false, type: null, scope: null });
 
   const [isUpdating, setIsUpdating] = useState(false);
@@ -113,6 +125,9 @@ export function SlotDetailsVault({
   });
   const [isRetiming, setIsRetiming] = useState(false);
 
+  const [currentStatus, setCurrentStatus] = useState<string>("");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
   // Sync form when event changes or editing starts
   useEffect(() => {
     if (event && isOpen) {
@@ -125,6 +140,7 @@ export function SlotDetailsVault({
         planId: event.assignedPlanId || null,
         planName: event.location || null,
       });
+      setCurrentStatus(event.status || "");
       setIsEditing(false);
     }
   }, [event, isOpen]);
@@ -244,6 +260,97 @@ export function SlotDetailsVault({
     setConfirmDialog({ isOpen: true, type: "edit", scope: editScope });
   };
 
+  const statusConfig = useMemo(() => ({
+    scheduled: {
+      label: tClasses("scheduled"),
+      color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
+      icon: "📅"
+    },
+    completed: {
+      label: tClasses("completed"),
+      color: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800",
+      icon: "✅"
+    },
+    "canceled-student": {
+      label: tClasses("canceled-student"),
+      color: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800",
+      icon: "❌"
+    },
+    "canceled-teacher": {
+      label: tClasses("canceled-teacher"),
+      color: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800",
+      icon: "❌"
+    },
+    "canceled-admin": {
+      label: tClasses("canceled-admin"),
+      color: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800",
+      icon: "🛡️"
+    },
+    "canceled-credit": {
+      label: tClasses("canceled-credit"),
+      color: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800",
+      icon: "💳"
+    },
+    "no-show": {
+      label: tClasses("no-show"),
+      color: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800",
+      icon: "👤"
+    },
+    rescheduled: {
+      label: tClasses("rescheduled"),
+      color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-800",
+      icon: "📅"
+    },
+    "teacher-recess": {
+      label: tClasses("teacher-recess"),
+      color: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
+      icon: "🏖️"
+    },
+    overdue: {
+      label: tClasses("overdue"),
+      color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
+      icon: "⏰"
+    },
+  }), [tClasses]);
+
+  const handleStatusChange = async (status: string) => {
+    if (!event) return;
+
+    if (status === "canceled-teacher" || status === "no-show") {
+      setConfirmDialog({
+        isOpen: true,
+        type: "status",
+        scope: "single",
+        pendingStatus: status
+      });
+      return;
+    }
+
+    // Direct update
+    setIsUpdatingStatus(true);
+    const toastId = "update-status-toast";
+    notify.loading(tClasses("updatingStatus") || "Atualizando status...", undefined, toastId);
+
+    try {
+      const result = await updateClassStatusAction({
+        classId: event.id,
+        status: status as z.infer<typeof updateSlotStatusSchema>["status"]
+      });
+
+      if (result?.data?.success) {
+        notify.success(tClasses("statusUpdated") || "Status atualizado!", undefined, toastId);
+        setCurrentStatus(status);
+        onSuccess();
+      } else {
+        notify.error(result?.data?.error || tClasses("statusUpdateError") || "Erro ao atualizar status", undefined, toastId);
+      }
+    } catch {
+      notify.error(tClasses("statusUpdateError") || "Erro ao atualizar status", undefined, toastId);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const executeConfirmAction = async () => {
     if (!event || !confirmDialog.type || !confirmDialog.scope) return;
 
@@ -269,6 +376,27 @@ export function SlotDetailsVault({
         notify.error(t("deleteError") || "Erro ao excluir horário.");
       } finally {
         setIsDeleting(false);
+        setConfirmDialog({ isOpen: false, type: null, scope: null });
+      }
+    } else if (confirmDialog.type === "status") {
+      setIsUpdating(true);
+      try {
+        const result = await updateClassStatusAction({
+          classId: event.id,
+          status: confirmDialog.pendingStatus as z.infer<typeof updateSlotStatusSchema>["status"]
+        });
+
+        if (result?.data?.success) {
+          notify.success(tClasses("statusUpdated") || "Status atualizado!");
+          setCurrentStatus(confirmDialog.pendingStatus!);
+          onSuccess();
+        } else {
+          notify.error(result?.data?.error || tClasses("statusUpdateError") || "Erro ao atualizar status");
+        }
+      } catch {
+        notify.error(tClasses("statusUpdateError") || "Erro ao atualizar status");
+      } finally {
+        setIsUpdating(false);
         setConfirmDialog({ isOpen: false, type: null, scope: null });
       }
     } else {
@@ -408,8 +536,14 @@ export function SlotDetailsVault({
                           "Aula Única"
                         )}
                       </Badge>
-                      <Badge className="text-[10px] font-black uppercase">
-                        {event.status}
+                      <Badge
+                        className={cn(
+                          "text-[10px] font-black uppercase border",
+                          statusConfig[currentStatus as keyof typeof statusConfig]?.color || ""
+                        )}
+                      >
+                        <span className="mr-1">{statusConfig[currentStatus as keyof typeof statusConfig]?.icon}</span>
+                        {statusConfig[currentStatus as keyof typeof statusConfig]?.label || currentStatus}
                       </Badge>
                     </div>
                   </div>
@@ -685,19 +819,53 @@ export function SlotDetailsVault({
           <VaultFooter>
             {!isEditing ? (
               <>
-                <VaultSecondaryButton
-                  onClick={() => {
-                    if (event.isRecurring) {
-                      setShowDeleteScope(true);
-                    } else {
-                      requestDelete("single");
-                    }
-                  }}
-                  disabled={isUpdating || isDeleting}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Excluir
-                </VaultSecondaryButton>
+                {event.studentId ? (
+                  <Select
+                    value={currentStatus}
+                    onValueChange={handleStatusChange}
+                    disabled={isUpdatingStatus}
+                  >
+                    <SelectTrigger
+                      className="flex-1 h-14! bg-white/5 border border-white/10 hover:bg-white/10 text-text rounded-md px-3 text-xs font-bold uppercase select-none flex items-center justify-between"
+                    >
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{statusConfig[currentStatus as keyof typeof statusConfig]?.icon}</span>
+                          <span>{statusConfig[currentStatus as keyof typeof statusConfig]?.label || currentStatus}</span>
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-md">
+                      {Object.entries(statusConfig).map(([key, itemConfig]) => {
+                        const isAllowed = ["completed", "canceled-teacher", "no-show", "scheduled"].includes(key) || key === currentStatus;
+                        if (!isAllowed) return null;
+
+                        return (
+                          <SelectItem key={key} value={key} className="text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{itemConfig.icon}</span>
+                              <span className="font-medium">{itemConfig.label}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <VaultSecondaryButton
+                    onClick={() => {
+                      if (event.isRecurring) {
+                        setShowDeleteScope(true);
+                      } else {
+                        requestDelete("single");
+                      }
+                    }}
+                    disabled={isUpdating || isDeleting}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir
+                  </VaultSecondaryButton>
+                )}
                 <VaultPrimaryButton
                   onClick={handleEditClick}
                   disabled={isUpdating || isDeleting}
@@ -993,16 +1161,26 @@ export function SlotDetailsVault({
               <VaultTitle>
                 {confirmDialog.type === "delete"
                   ? "Confirmar Exclusão"
-                  : "Confirmar Alterações"}
+                  : confirmDialog.type === "status"
+                    ? (tClasses("confirmStatusChange") || "Confirmar Alteração")
+                    : "Confirmar Alterações"}
               </VaultTitle>
               <VaultDescription>
                 {confirmDialog.type === "delete"
                   ? confirmDialog.scope === "future"
                     ? "Tem certeza que deseja excluir esta e TODAS as próximas aulas vinculadas a esta regra? Esta ação não pode ser desfeita."
                     : "Tem certeza que deseja excluir esta aula? Esta ação não pode ser desfeita."
-                  : confirmDialog.scope === "future"
-                    ? "Tem certeza que deseja aplicar as edições de horário/conteúdo nesta e em TODAS as próximas aulas vinculadas?"
-                    : "Tem certeza que deseja aplicar as edições apenas nesta aula?"}
+                  : confirmDialog.type === "status"
+                    ? <>
+                        {tClasses("confirmStatusDescription") || "Você tem certeza que deseja alterar o status desta aula para"}{" "}
+                        <strong>
+                          {confirmDialog.pendingStatus &&
+                            (statusConfig[confirmDialog.pendingStatus as keyof typeof statusConfig]?.label || confirmDialog.pendingStatus)}
+                        </strong>?
+                      </>
+                    : confirmDialog.scope === "future"
+                      ? "Tem certeza que deseja aplicar as edições de horário/conteúdo nesta e em TODAS as próximas aulas vinculadas?"
+                      : "Tem certeza que deseja aplicar as edições apenas nesta aula?"}
               </VaultDescription>
             </div>
           </VaultHeader>
