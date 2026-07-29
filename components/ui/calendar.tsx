@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
+import { ptBR, enUS } from "date-fns/locale"
+import { useLocale } from "next-intl"
 import { Vault, VaultContent, VaultHeader, VaultTitle, VaultTrigger } from "@/components/ui/vault"
 
 function Calendar({
@@ -28,6 +30,8 @@ function Calendar({
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const currentLocale = useLocale()
+  const dateLocale = locale || (currentLocale === "pt" ? ptBR : enUS)
 
   return (
     <DayPicker
@@ -39,10 +43,10 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
-      locale={locale}
+      locale={dateLocale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(dateLocale?.code, { month: "short" }),
         ...formatters,
       }}
       classNames={{
@@ -234,13 +238,17 @@ type CalendarVaultProps = Omit<React.ComponentProps<typeof DayPicker>, "mode" | 
 export function CalendarVault({
   date,
   onSelect,
-  placeholder = "Pick a date",
+  placeholder,
   disabled,
   className,
   label,
   ...props
 }: CalendarVaultProps) {
   const [open, setOpen] = React.useState(false)
+  const currentLocale = useLocale()
+  const dateLocale = currentLocale === "pt" ? ptBR : enUS
+  const defaultPlaceholder = currentLocale === "pt" ? "Selecione uma data" : "Pick a date"
+  const finalPlaceholder = placeholder || defaultPlaceholder
 
   return (
     <Vault open={open} onOpenChange={setOpen}>
@@ -253,12 +261,12 @@ export function CalendarVault({
           className
         )}
       >
-        {date ? format(date, "PPP") : <span>{placeholder}</span>}
+        {date ? format(date, "PPP", { locale: dateLocale }) : <span>{finalPlaceholder}</span>}
         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
       </VaultTrigger>
       <VaultContent>
         <VaultHeader>
-          <VaultTitle>{label || placeholder}</VaultTitle>
+          <VaultTitle>{label || finalPlaceholder}</VaultTitle>
         </VaultHeader>
         <div className="flex items-center justify-center p-4 pb-10">
           <Calendar
@@ -270,6 +278,7 @@ export function CalendarVault({
             }}
             disabled={disabled}
             initialFocus
+            locale={dateLocale}
             {...props}
           />
         </div>

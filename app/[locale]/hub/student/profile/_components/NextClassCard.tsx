@@ -71,7 +71,7 @@ export function NextClassCard({ nextClass, studentId }: NextClassCardProps) {
 
   return (
     <div className="card p-6 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3">
         <div className="p-2.5 rounded-md bg-primary/10 text-primary">
           <Calendar className="w-5 h-5" />
         </div>
@@ -87,9 +87,9 @@ export function NextClassCard({ nextClass, studentId }: NextClassCardProps) {
         <p className="text-xs font-bold text-primary uppercase tracking-widest mb-2">
           {t("next_session")}
         </p>
-        <h3 className="text-xl font-black text-foreground mb-4 line-clamp-2 leading-tight">
+        {/* <h3 className="text-xl font-black text-foreground mb-4 line-clamp-2 leading-tight">
           {nextClass.topic || t("default_topic")}
-        </h3>
+        </h3> */}
 
         <div className="space-y-4">
           <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">

@@ -962,7 +962,7 @@ export function StudentProfileSurvey({
       </main>
 
       {/* Footer Navigation - Sticky at bottom of content area */}
-      <footer className="sticky bottom-0 z-20 w-full bg-background/40 backdrop-blur-xl border-t border-border/40 py-4 px-6 mt-auto">
+      <footer className="sticky bottom-0 z-50 w-full bg-background/40 backdrop-blur-xl border-t border-border/40 py-4 px-6 mt-auto">
         <div className="flex items-center justify-between gap-4">
           <Button
             variant="ghost"

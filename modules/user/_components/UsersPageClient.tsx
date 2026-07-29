@@ -117,8 +117,8 @@ export function UsersPageClient({
       />
 
       <main className="container">
-        <div className="flex flex-col md:flex-row gap-2 mb-4">
-          <div className="w-full md:w-48">
+        <div className="flex flex-wrap md:flex-row gap-2 mb-4">
+          <div className="w-fit">
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger>
                 <SelectValue placeholder={t("type")} />
@@ -133,41 +133,41 @@ export function UsersPageClient({
             </Select>
           </div>
 
-          <div className="w-full md:w-48">
+          <div className="w-fit">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="active">Ativos</SelectItem>
                 <SelectItem value="inactive">Inativos</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="w-full md:w-48">
+          <div className="w-fit">
             <Select value={contractFilter} onValueChange={setContractFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Contrato" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Contratos</SelectItem>
-                <SelectItem value="signed">Contrato Ativo</SelectItem>
+                <SelectItem value="all">Todos contratos</SelectItem>
+                <SelectItem value="signed">Ativo</SelectItem>
                 <SelectItem value="unsigned">Sem Contrato</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="w-full md:w-48">
+          <div className="w-fit">
             <Select value={paymentFilter} onValueChange={setPaymentFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Pagamento" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Pagamentos</SelectItem>
-                <SelectItem value="paid">Pago (Mês)</SelectItem>
-                <SelectItem value="unpaid">Pendente (Mês)</SelectItem>
+                <SelectItem value="all">Todos pagamentos</SelectItem>
+                <SelectItem value="paid">Pagos</SelectItem>
+                <SelectItem value="unpaid">Pendentes</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -208,7 +208,7 @@ export function UsersPageClient({
                       <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         {user.isActive ? (<>
                           <Mail className="w-3 h-3" />
-                          <span className="text-truncate max-w-60 flex-wrap">{user.email}</span>
+                          <span className="break-all max-w-60">{user.email}</span>
                         </>) : (
                           <>
                             <Skull className="w-3 h-3" />
@@ -243,12 +243,12 @@ export function UsersPageClient({
                     {/* Payment status */}
                     {studentPaymentsMap?.[user.id] === "paid" && (
                       <Badge variant="outline" className="text-[10px] py-0.5 px-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 flex items-center gap-1 font-semibold">
-                        <CreditCard className="w-3 h-3" /> Pago (Mês)
+                        <CreditCard className="w-3 h-3" /> Pago
                       </Badge>
                     )}
                     {studentPaymentsMap?.[user.id] === "unpaid" && (
                       <Badge variant="outline" className="text-[10px] py-0.5 px-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 flex items-center gap-1 font-semibold">
-                        <CreditCard className="w-3 h-3" /> Pendente (Mês)
+                        <CreditCard className="w-3 h-3" /> Pendente
                       </Badge>
                     )}
 
