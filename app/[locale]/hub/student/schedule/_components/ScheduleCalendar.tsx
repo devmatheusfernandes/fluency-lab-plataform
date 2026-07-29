@@ -6,9 +6,9 @@ import { useTranslations, useLocale } from "next-intl";
 import { CreditsSummary } from "./CreditsSummary";
 import { format, differenceInHours } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
-import { useIsMobile } from "@/hooks/ui/use-device";
+import { useDevice } from "@/hooks/ui/use-device";
 import { Badge } from "@/components/ui/badge";
-import { Vault, VaultHeader, VaultTitle, VaultBody, VaultContent } from "@/components/ui/vault";
+import { Vault, VaultHeader, VaultTitle, VaultBody, VaultContent, VaultPrimaryButton, VaultSecondaryButton } from "@/components/ui/vault";
 import { VaultLoadingOverlay } from "@/components/ui/vault-loading-overlay";
 import { Button } from "@/components/ui/button";
 import { Calendar, User, Clock, Ticket, HelpCircle, AlertCircle, Info } from "lucide-react";
@@ -51,7 +51,7 @@ export function ScheduleCalendar({ initialClasses, balance, rescheduleStats }: S
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
   const [cancelOverlayState, setCancelOverlayState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [cancelErrorMsg, setCancelErrorMsg] = useState("");
-  const isMobile = useIsMobile();
+  const { isMobile, isStandalone } = useDevice();
 
   const {
     isOpen: isHelpOpen,
@@ -136,14 +136,15 @@ export function ScheduleCalendar({ initialClasses, balance, rescheduleStats }: S
         subtitle={t("description")}
         actions={headerActions}
         className="contents"
+        showSubHeader={(!isStandalone)}
       />
-
-      <main className="container">
+      <main className={isStandalone ? "" : "container"}>
         <div className="flex flex-col lg:grid lg:grid-cols-[1fr_300px] gap-6">
           <div className="order-2 lg:order-1">
             <CalendarView
               events={events}
               onEventClick={handleEventClick}
+              className={isStandalone ? "rounded-none!" : ""}
             />
           </div>
 
@@ -285,8 +286,8 @@ export function ScheduleCalendar({ initialClasses, balance, rescheduleStats }: S
                           )}
 
                           {/* Reschedule button: disabled if <4h for scheduled */}
-                          <Button
-                            variant="outline"
+                          <VaultPrimaryButton
+                            variant="default"
                             disabled={isWithin4h}
                             onClick={() => {
                               setIsDetailOpen(false);
@@ -294,13 +295,13 @@ export function ScheduleCalendar({ initialClasses, balance, rescheduleStats }: S
                             }}
                           >
                             {t("Actions.reschedule") || "Reagendar Aula"}
-                          </Button>
+                          </VaultPrimaryButton>
 
                           {/* Cancel button: only for scheduled (canceled-teacher is already canceled) */}
                           {selectedEvent.status === "scheduled" && (
-                            <Button variant="destructive" onClick={() => setIsCancelConfirmOpen(true)}>
+                            <VaultPrimaryButton variant="secondary" onClick={() => setIsCancelConfirmOpen(true)}>
                               {t("Actions.cancel") || "Cancelar Aula"}
-                            </Button>
+                            </VaultPrimaryButton>
                           )}
 
                           {/* General policy note */}
@@ -357,22 +358,21 @@ export function ScheduleCalendar({ initialClasses, balance, rescheduleStats }: S
                   </p>
                   
                   <div className="flex flex-col gap-3 pt-4">
-                    <Button 
+                    <VaultPrimaryButton 
                       variant="destructive" 
                       className="w-full" 
                       onClick={handleCancel}
                       disabled={cancelOverlayState !== "idle"}
                     >
                       {t("CancelConfirm.confirm") || "Sim, cancelar aula"}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
+                    </VaultPrimaryButton>
+                    <VaultSecondaryButton 
                       className="w-full" 
                       onClick={() => setIsCancelConfirmOpen(false)}
                       disabled={cancelOverlayState !== "idle"}
                     >
                       {t("CancelConfirm.back") || "Voltar"}
-                    </Button>
+                    </VaultSecondaryButton>
                   </div>
                 </div>
               </VaultBody>

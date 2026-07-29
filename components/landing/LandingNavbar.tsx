@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import Image from "next/image";
@@ -32,17 +32,59 @@ gsap.registerPlugin(ScrollTrigger);
 
 interface LandingNavbarProps {
   user: User | null;
+  compact?: boolean;
 }
 
-export function LandingNavbar({ user }: LandingNavbarProps) {
+export function LandingNavbar({ user, compact = false }: LandingNavbarProps) {
   const t = useTranslations("LandingPage");
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("about");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { resolvedTheme } = useTheme();
+
+  const [navTransform, setNavTransform] = useState({ x: 0, scale: 1 });
+
+  const updateTransform = useCallback(() => {
+    if (!compact) {
+      setNavTransform({ x: 0, scale: 1 });
+      return;
+    }
+
+    const pillEl = navContainerRef.current;
+    const targetEl = document.getElementById("comparison-nav-anchor");
+    if (!pillEl || !targetEl || !leftNavRef.current || !rightNavRef.current) return;
+
+    pillEl.style.width = `${leftNavRef.current.offsetWidth + rightNavRef.current.offsetWidth + 8}px`;
+
+    const pillWidth = pillEl.offsetWidth; // ignora nosso próprio scale
+    const targetRect = targetEl.getBoundingClientRect();
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const naturalCenterX = window.innerWidth / 2;
+
+    // 1. Escala base calculada para caber na coluna
+    const baseScale = targetRect.width / pillWidth;
+    
+    // Se quiser forçar que ela fique maior ou menor, mude esse multiplicador (ex: 1.2 = 20% maior)
+    const MULTIPLICADOR_TAMANHO = 1.4; 
+    
+    const scale = baseScale * MULTIPLICADOR_TAMANHO;
+
+    // Se não quiser que ela ultrapasse o tamanho original (100%), descomente a linha abaixo:
+    // scale = Math.min(1, scale);
+
+    const x = targetCenterX - naturalCenterX;
+
+    setNavTransform({ x, scale });
+  }, [compact]);
+
+  useEffect(() => {
+    updateTransform();
+    window.addEventListener("resize", updateTransform);
+    return () => window.removeEventListener("resize", updateTransform);
+  }, [compact, updateTransform]);
 
   // Refs para o GSAP
   const headerRef = useRef<HTMLElement>(null);
@@ -116,7 +158,7 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
       entries.forEach((entry) => {
         if (entry.isIntersecting) setActiveTab(entry.target.id);
       });
-      if (window.scrollY < 100) setActiveTab("");
+      if (window.scrollY < 100) setActiveTab("about");
     };
 
     const observer = new IntersectionObserver(observerCallback, observerOptions);
@@ -125,15 +167,19 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
       if (element) observer.observe(element);
     });
 
-    const handleScrollBottom = () => {
+    const handleScroll = () => {
+      if (window.scrollY < 100) {
+        setActiveTab("about");
+        return;
+      }
       const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 50;
       if (isAtBottom) setActiveTab("faq");
     };
 
-    window.addEventListener("scroll", handleScrollBottom, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
-      window.removeEventListener("scroll", handleScrollBottom);
+      window.removeEventListener("scroll", handleScroll);
       observer.disconnect();
     };
   }, []);
@@ -171,9 +217,11 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
           ref={headerRef}
           className="hidden md:flex fixed top-0 left-0 w-full z-[99] pointer-events-none flex-col items-center pt-[2rem] px-[2rem]"
         >
-          <div
+          <motion.div
             ref={navContainerRef}
             className="relative flex items-center justify-between pointer-events-auto rounded-full w-full"
+            animate={navTransform}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Fundo Central (agora atrelado apenas à largura deste container) */}
             <div
@@ -189,9 +237,31 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
               />
 
               <div className="relative z-10 flex items-center">
-                <div className="flex items-center gap-3 pl-4 pr-2">
-                  <Image src={Logo} alt="Logo" width={140} style={{ height: "auto" }} className="object-contain" />
-                </div>
+                <motion.div
+                  initial={false}
+                  animate={{
+                    width: compact ? 0 : "auto",
+                    opacity: compact ? 0 : 1,
+                    paddingLeft: compact ? 0 : 16,
+                    paddingRight: compact ? 0 : 8,
+                  }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  onUpdate={() => {
+                    if (navContainerRef.current && leftNavRef.current && rightNavRef.current) {
+                      navContainerRef.current.style.width = `${leftNavRef.current.offsetWidth + rightNavRef.current.offsetWidth + 8}px`;
+                      if (compact) updateTransform();
+                    }
+                  }}
+                  onAnimationComplete={() => {
+                    if (navContainerRef.current && leftNavRef.current && rightNavRef.current) {
+                      navContainerRef.current.style.width = `${leftNavRef.current.offsetWidth + rightNavRef.current.offsetWidth + 8}px`;
+                      if (compact) updateTransform();
+                    }
+                  }}
+                  className="overflow-hidden flex items-center shrink-0"
+                >
+                  <Link href="#about" scroll={true}><Image src={Logo} alt="Logo" width={140} style={{ height: "auto" }} className="object-contain max-w-none" /></Link>
+                </motion.div>
                 <nav className={`flex items-center gap-1 transition-colors duration-200 ${isScrolled ? "text-black dark:text-white" : "text-white"}`}>
                   {navLinksLeft.map((link) => (
                     <NavItem
@@ -280,7 +350,7 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </header>
       </LayoutGroup>
 
@@ -323,11 +393,11 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
 
       {/* ---------- MENU MOBILE (VAULT) ---------- */}
       <Vault open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <div className="md:hidden fixed bottom-6 left-6 z-50">
+        <div className="md:hidden fixed bottom-6 left-6 z-[999]">
           <VaultTrigger asChild>
             <button
               aria-label="Abrir menu de navegação"
-              className="w-14 h-14 bg-black text-primary rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-transform"
+              className="w-14 h-14 bg-primary text-white rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-transform"
             >
               <BottomSheetIcon size={24} />
             </button>

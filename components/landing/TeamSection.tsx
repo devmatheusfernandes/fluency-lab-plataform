@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/carousel";
 import { useTranslations } from "next-intl";
 import { containerVariants, itemVariants } from "@/lib/animations";
+import Link from "next/link";
+import { SystemSettings } from "@/modules/settings/settings.schema";
 
 type TeamMember = {
   name: string;
@@ -30,7 +32,7 @@ const TutorCard = ({ member }: { member: TeamMember }) => (
     whileHover={{ y: -6 }}
     whileTap={{ scale: 0.98 }}
     transition={{ type: "spring", stiffness: 300, damping: 22 }}
-    className="group flex flex-col items-center text-center h-full justify-between p-6 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/70 shadow-sm hover:shadow-xl hover:border-primary/20 transition-[box-shadow,border-color] duration-300"
+    className="group flex flex-col items-center text-center h-full justify-between p-6 rounded-2xl bg-muted dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/70 hover:border-primary/20 transition-[box-shadow,border-color] duration-300"
   >
     <div className="flex flex-col items-center">
       <div className="relative mb-5">
@@ -97,7 +99,11 @@ const TutorCard = ({ member }: { member: TeamMember }) => (
   </motion.div>
 );
 
-export default function TeamSection() {
+export default function TeamSection({
+  settings,
+}: {
+  settings: SystemSettings;
+}) {
   const t = useTranslations("LandingPage.Team");
 
   const [api, setApi] = useState<CarouselApi>();
@@ -281,7 +287,7 @@ export default function TeamSection() {
               type="button"
               onClick={scrollPrev}
               aria-label="Anterior"
-              className="hidden sm:flex absolute left-1 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-9 h-9 items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md hover:border-primary/30 hover:text-primary transition-colors"
+              className="hidden sm:flex absolute left-1 top-1/2 -translate-y-1/2 -translate-x-1/2 z-1 w-9 h-9 items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md hover:border-primary/30 hover:text-primary transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -289,7 +295,7 @@ export default function TeamSection() {
               type="button"
               onClick={scrollNext}
               aria-label="Próximo"
-              className="hidden sm:flex absolute right-1 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-9 h-9 items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md hover:border-primary/30 hover:text-primary transition-colors"
+              className="hidden sm:flex absolute right-1 top-1/2 -translate-y-1/2 translate-x-1/2 z-1 w-9 h-9 items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md hover:border-primary/30 hover:text-primary transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -338,12 +344,18 @@ export default function TeamSection() {
               </motion.p>
 
               <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                                <Link
+                                href={`https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(
+                  settings.whatsappMessage,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer">
                 <Button
                   size="lg"
                   className="rounded-full px-8 text-base font-semibold transition-all hover:scale-105 z-1!"
                 >
                   {t("cta") || "Quero marcar uma aula teste"}
-                </Button>
+                </Button></Link>
               </motion.div>
 
               <motion.div variants={itemVariants} className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center lg:justify-start gap-8">

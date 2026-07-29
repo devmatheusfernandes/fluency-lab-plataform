@@ -845,7 +845,9 @@
         "status_neutral": "Waiting",
         "status_pending": "Action Required",
         "status_success": "Completed",
-        "status_warning": "In Progress"
+        "status_warning": "In Progress",
+        "app_install_pending": "Install the App",
+        "install_instructions": "To install, add this page to your home screen via the browser menu."
       },
       "Payment": {
         "active": "Regular",
@@ -964,6 +966,7 @@
       "description": "You've tried learning with apps and gave up. Or you took generic classes that went nowhere. We know — and we've created something entirely different.",
       "items": {
         "apps": {
+          "description": "No more repetitive exercises or memorizing random words without real support. At Fluency Lab, you get a dedicated tutor and a natural method to truly speak — at your own pace.",
           "problems": "Repetitive exercises,Memorizing isolated words,No real follow-up,90% give up halfway",
           "problemTitle": "The Problem with Apps",
           "solutions": "Learn how you learned Portuguese,No forced memorization,Dedicated tutor who knows you,Anti-dropout planning",
@@ -971,6 +974,7 @@
           "title": "Apps (Duolingo, Babbel)"
         },
         "marketplaces": {
+          "description": "No more isolated classes and managing everything by yourself without a structured curriculum. At Fluency Lab, you get a 100% personalized plan tailored to your goals.",
           "problems": "Each class is isolated,No structured curriculum,You have to manage everything",
           "problemTitle": "The Problem with Marketplaces",
           "solutions": "Plan made 100% for you,Schedule based on your objectives,We manage your learning",
@@ -978,6 +982,7 @@
           "title": "Marketplaces (Preply, iTalki)"
         },
         "traditional": {
+          "description": "No more fixed-pace classes, generic content, and inflexible schedules. At Fluency Lab, the pace and topics adapt entirely to your routine and preferences.",
           "problems": "Fixed-pace classes,Generic content for everyone,Inflexible schedules",
           "problemTitle": "The Problem with Online Schools",
           "solutions": "Pace adapted to you,Themes you enjoy,Schedules that work for you",
@@ -988,6 +993,10 @@
       "labels": {
         "fluencyLab": "Fluency Lab",
         "others": "Others"
+      },
+      "cta": {
+        "description": "No noise. No complicated systems. Just your learning, at your pace.",
+        "button": "Start for free"
       },
       "mobileSwipe": "Swipe to see more →",
       "title": "Why is Fluency Lab different?"
@@ -1002,6 +1011,7 @@
         "button": "Subscribe",
         "description": "Get 1 English tip per week.",
         "placeholder": "your@email.com",
+        "success": "Subscription successful!",
         "title": "Ready for fluency?"
       },
       "sections": {

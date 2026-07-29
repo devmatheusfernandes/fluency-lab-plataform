@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Vault, VaultHeader, VaultTitle, VaultBody, VaultContent } from "@/components/ui/vault";
+import { Vault, VaultHeader, VaultTitle, VaultBody, VaultContent, VaultPrimaryButton, VaultSecondaryButton } from "@/components/ui/vault";
 import { VaultLoadingOverlay } from "@/components/ui/vault-loading-overlay";
-import { Button } from "@/components/ui/button";
 import { getTeacherAvailabilityAction, rescheduleAction } from "@/modules/scheduling/scheduling.actions";
 import { format, addDays } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
@@ -258,7 +257,7 @@ export function RescheduleVault({ open, onOpenChange, selectedClass, balance, re
             )}
 
             <div className="pt-4 border-t flex flex-col gap-3">
-              <Button
+              <VaultPrimaryButton
                 className="w-full"
                 disabled={overlayState !== "idle" || !selectedSlotId || (useCreditId === undefined && rescheduleStats?.count >= rescheduleStats?.limit)}
                 onClick={handleConfirm}
@@ -266,14 +265,13 @@ export function RescheduleVault({ open, onOpenChange, selectedClass, balance, re
                 {isConfirming 
                   ? (t("Reschedule.confirmFinal") || "Confirmar e Salvar")
                   : (t("Reschedule.confirm") || "Confirmar Reagendamento")}
-              </Button>
-              <Button 
-                variant="ghost" 
+              </VaultPrimaryButton>
+              <VaultSecondaryButton 
                 onClick={() => isConfirming ? setIsConfirming(false) : onOpenChange(false)}
                 disabled={overlayState !== "idle"}
               >
                 {isConfirming ? (t("Actions.back") || "Voltar") : (t("Actions.cancel") || "Cancelar")}
-              </Button>
+              </VaultSecondaryButton>
             </div>
           </div>
         </VaultBody>

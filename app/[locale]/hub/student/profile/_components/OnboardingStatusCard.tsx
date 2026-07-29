@@ -9,7 +9,10 @@ import {
   AlertCircle,
   Clock,
   XCircle,
+  Download,
 } from "lucide-react";
+import { useDevice } from "@/hooks/ui/use-device";
+import { notify } from "@/components/ui/toaster";
 import { useTranslations } from "next-intl";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -23,7 +26,8 @@ export type OnboardingVariant = "success" | "pending" | "warning" | "neutral";
 interface StatusUIProps {
   text: string;
   variant: OnboardingVariant;
-  link: string;
+  link?: string;
+  onClick?: () => void;
   icon?: React.ReactNode;
 }
 
@@ -58,59 +62,72 @@ const StatusItem: React.FC<StatusUIProps> = ({
   text,
   variant,
   link,
+  onClick,
   icon: CustomIcon,
 }) => {
   const t = useTranslations("Hub.StudentProfile.Onboarding");
   const config = STATUS_CONFIG[variant] || STATUS_CONFIG.neutral;
   const StatusIcon = config.icon;
 
-  return (
-    <Link href={link} className="block w-full outline-none group">
-      <motion.div
-        whileHover={{ scale: 1.005 }}
-        whileTap={{ scale: 0.99 }}
-        className={cn(
-          "relative flex items-center justify-between p-4 w-full rounded-md transition-all duration-300",
-          "card border border-zinc-200 dark:border-zinc-800",
-          "hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50",
-          config.border,
-        )}
-      >
-        <div className="flex items-center gap-4">
-          <div
+  const content = (
+    <motion.div
+      whileHover={{ scale: 1.005 }}
+      whileTap={{ scale: 0.99 }}
+      className={cn(
+        "relative flex items-center justify-between p-4 w-full rounded-md transition-all duration-300",
+        "card border border-zinc-200 dark:border-zinc-800",
+        "hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50",
+        config.border,
+      )}
+    >
+      <div className="flex items-center gap-4">
+        <div
+          className={cn(
+            "p-2.5 rounded-md flex items-center justify-center transition-colors",
+            config.bg,
+            config.color,
+          )}
+        >
+          {CustomIcon ? (
+            <span className="w-5 h-5">{CustomIcon}</span>
+          ) : (
+            <StatusIcon className="w-5 h-5" />
+          )}
+        </div>
+
+        <div className="flex flex-col text-left">
+          <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm md:text-base">
+            {t(text)}
+          </span>
+          <span
             className={cn(
-              "p-2.5 rounded-md flex items-center justify-center transition-colors",
-              config.bg,
+              "text-[10px] font-black uppercase tracking-widest mt-0.5",
               config.color,
             )}
           >
-            {CustomIcon ? (
-              <span className="w-5 h-5">{CustomIcon}</span>
-            ) : (
-              <StatusIcon className="w-5 h-5" />
-            )}
-          </div>
-
-          <div className="flex flex-col text-left">
-            <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm md:text-base">
-              {t(text)}
-            </span>
-            <span
-              className={cn(
-                "text-[10px] font-black uppercase tracking-widest mt-0.5",
-                config.color,
-              )}
-            >
-              {t("status_" + variant)}
-            </span>
-          </div>
+            {t("status_" + variant)}
+          </span>
         </div>
+      </div>
 
-        <div className="text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-900 dark:group-hover:text-white transition-transform duration-300 group-hover:translate-x-1">
-          <ChevronRight className="w-5 h-5" />
-        </div>
-      </motion.div>
-    </Link>
+      <div className="text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-900 dark:group-hover:text-white transition-transform duration-300 group-hover:translate-x-1">
+        <ChevronRight className="w-5 h-5" />
+      </div>
+    </motion.div>
+  );
+
+  if (link) {
+    return (
+      <Link href={link} className="block w-full outline-none group" onClick={onClick}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button onClick={onClick} className="block w-full outline-none group text-left">
+      {content}
+    </button>
   );
 };
 
@@ -131,8 +148,25 @@ interface OnboardingStatusCardProps {
 }
 
 export function OnboardingStatusCard({ contract, placement, course }: OnboardingStatusCardProps) {
+  const { isMobile, isStandalone, isInstallable, install } = useDevice();
+  const t = useTranslations("Hub.StudentProfile.Onboarding");
+
   return (
     <div className="w-full flex flex-col gap-3">
+      {isMobile && !isStandalone && (
+        <StatusItem
+          variant="warning"
+          text="app_install_pending"
+          icon={<Download />}
+          onClick={() => {
+            if (isInstallable) {
+              install();
+            } else {
+              notify.info(t("install_instructions") || "Para instalar, adicione esta página à sua tela inicial pelo menu do navegador.");
+            }
+          }}
+        />
+      )}
       <StatusItem
         variant={contract.status}
         text={contract.label}

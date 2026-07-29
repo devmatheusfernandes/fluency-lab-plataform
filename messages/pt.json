@@ -845,7 +845,9 @@
         "status_neutral": "Aguardando",
         "status_pending": "Ação Necessária",
         "status_success": "Concluído",
-        "status_warning": "Em andamento"
+        "status_warning": "Em andamento",
+        "app_install_pending": "Instale o Aplicativo",
+        "install_instructions": "Para instalar, adicione esta página à sua tela inicial pelo menu do navegador."
       },
       "Payment": {
         "active": "Regular",
@@ -964,6 +966,7 @@
       "description": "Você já tentou aprender com apps e desistiu. Ou fez aulas genéricas que não levaram a lugar nenhum. A gente sabe — e criamos algo totalmente diferente.",
       "items": {
         "apps": {
+          "description": "Chega de exercícios repetitivos e decorar palavras soltas sem acompanhamento real. Na Fluency Lab você tem um tutor dedicado e um método natural para falar de verdade — no seu ritmo.",
           "problems": "Exercícios repetitivos,Decorar palavras soltas,Sem acompanhamento real,90% desistem no caminho",
           "problemTitle": "O Problema dos Apps",
           "solutions": "Aprenda como aprendeu português,Sem decoreba forçada,Tutor dedicado que te conhece,Planejamento anti-desistência",
@@ -971,6 +974,7 @@
           "title": "Apps (Duolingo, Babbel)"
         },
         "marketplaces": {
+          "description": "Chega de aulas isoladas e ter que gerenciar tudo sozinho sem um currículo estruturado. Na Fluency Lab você tem um plano feito 100% para você, alinhado aos seus objetivos.",
           "problems": "Cada aula é isolada,Sem currículo estruturado,Você que tem que gerenciar tudo",
           "problemTitle": "O Problema dos Marketplaces",
           "solutions": "Plano feito 100% para você,Cronograma baseado nos seus objetivos,A gente gerencia seu aprendizado",
@@ -978,6 +982,7 @@
           "title": "Marketplaces (Preply, iTalki)"
         },
         "traditional": {
+          "description": "Chega de turmas com ritmo fixo, conteúdo genérico e horários inflexíveis. Na Fluency Lab o ritmo e os temas se adaptam totalmente à sua rotina e preferências.",
           "problems": "Turmas com ritmo fixo,Conteúdo genérico para todos,Horários inflexíveis",
           "problemTitle": "O Problema das Escolas Online",
           "solutions": "Ritmo adaptado a você,Temas que você gosta,Horários que funcionam pra você",
@@ -988,6 +993,10 @@
       "labels": {
         "fluencyLab": "Fluency Lab",
         "others": "Outros"
+      },
+      "cta": {
+        "description": "Sem ruído. Sem sistemas complicados. Apenas seu aprendizado, no seu ritmo.",
+        "button": "Começar gratuitamente"
       },
       "mobileSwipe": "Deslize para ver mais →",
       "title": "Por que a Fluency Lab é diferente?"
@@ -1002,6 +1011,7 @@
         "button": "Assinar",
         "description": "Receba 1 dica de inglês por semana.",
         "placeholder": "seu@email.com",
+        "success": "Inscrição realizada!",
         "title": "Pronto para fluência?"
       },
       "sections": {

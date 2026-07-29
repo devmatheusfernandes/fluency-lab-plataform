@@ -42,7 +42,7 @@ export default async function ImmersionPage() {
       
       <main className="flex-1 container space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Link href="/hub/student/immersion/podcasts" className="group">
+          <Link href="#" className="group">
             <div className="card relative h-[200px] md:h-[350px] overflow-hidden rounded-md border-none">
               <Image
                 src="/immersion/podcast.png"
@@ -72,7 +72,7 @@ export default async function ImmersionPage() {
             </div>
           </Link>
 
-          <Link href="/hub/student/immersion/reading" className="group">
+          <Link href="#" className="group">
             <div className="card relative h-[200px] md:h-[350px] overflow-hidden rounded-md border-none">
               <Image
                 src="/immersion/blog.png"

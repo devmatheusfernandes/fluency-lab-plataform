@@ -242,7 +242,7 @@ export default function HowItWorks() {
                 <div className="flex-1">
                   <h3
                     className={cn(
-                      "text-xl md:text-3xl font-bold transition-colors duration-300",
+                      "text-xl md:text-xl font-bold transition-colors duration-300",
                       isActive
                         ? "text-primary"
                         : "text-slate-900 dark:text-slate-100",
@@ -253,7 +253,7 @@ export default function HowItWorks() {
 
                   <p
                     className={cn(
-                      "text-sm md:text-base transition-all duration-300 mt-1",
+                      "text-sm md:text-sm transition-all duration-300 mt-1",
                       isActive ? "text-primary/80" : "text-slate-500",
                     )}
                   >
@@ -275,7 +275,7 @@ export default function HowItWorks() {
                       >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center py-2">
                           <div className="space-y-4">
-                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-base md:text-lg">
+                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-base md:text-base">
                               {feature.description}
                             </p>
 

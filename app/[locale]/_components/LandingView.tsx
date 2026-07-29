@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useDevice } from "@/hooks/ui/use-device";
@@ -30,6 +30,25 @@ const Footer = dynamic(
 export function LandingView({ user, settings }: { user: User | null; settings: SystemSettings }) {
   const { isStandalone } = useDevice();
   const [videoSrc, setVideoSrc] = useState<string>("");
+
+  const comparisonWrapperRef = useRef<HTMLDivElement>(null);
+  const [isComparisonActive, setIsComparisonActive] = useState(false);
+
+  useEffect(() => {
+    const el = comparisonWrapperRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsComparisonActive(entry.isIntersecting),
+      {
+        threshold: 0,
+        rootMargin: "-100px 0px -70% 0px",
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 1000], ["0%", "20%"]);
@@ -63,19 +82,18 @@ export function LandingView({ user, settings }: { user: User | null; settings: S
 
             <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-linear-to-b from-black/20 to-transparent dark:from-black/35 z-1" />
 
-            <div className="relative z-3 flex flex-col flex-1">
-              <LandingNavbar user={user} />
-              <div id="about" />
+            <div id="about" className="relative z-3 flex flex-col flex-1">
+              <LandingNavbar user={user} compact={isComparisonActive} />
               <LandingHero user={user} settings={settings} />
             </div>
           </div>
 
-          <div id="plans" className="relative mb-12">
-            <ComparisonSection />
+          <div id="plans" ref={comparisonWrapperRef} className="relative mb-12">
+            <ComparisonSection settings={settings}/>
           </div>
 
           <div id="team" className="relative mb-12">
-            <TeamSection />
+            <TeamSection settings={settings}/>
           </div>
 
           <div id="faq" className="relative mb-12">

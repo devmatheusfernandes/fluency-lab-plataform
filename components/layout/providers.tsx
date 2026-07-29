@@ -11,6 +11,7 @@ import { ThemeColorUpdater } from "./theme-color-updater";
 import { PwaSplash } from "./pwa-splash";
 import { SWRConfig } from "swr";
 import CookieConsent from "@/components/ui/cookie-consent";
+import NextTopLoader from "nextjs-toploader";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -29,6 +30,17 @@ export function Providers({ children, locale, messages, themeMode, nonce }: Prov
       disableTransitionOnChange
       nonce={nonce}
     >
+      <NextTopLoader
+        color="hsl(var(--primary))"
+        initialPosition={0.08}
+        crawlSpeed={200}
+        height={3}
+        crawl={true}
+        showSpinner={false}
+        easing="ease"
+        speed={200}
+        shadow="0 0 10px hsl(var(--primary)),0 0 5px hsl(var(--primary))"
+      />
       <NextIntlClientProvider messages={messages} locale={locale} timeZone="America/Sao_Paulo">
         <SWRConfig
           value={{
