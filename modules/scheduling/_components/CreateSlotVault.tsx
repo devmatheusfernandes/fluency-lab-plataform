@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
-import { Clock, AlertTriangle, AlertCircle } from "lucide-react";
+import { Clock, AlertTriangle, AlertCircle, ArrowLeft, Check, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -99,6 +99,9 @@ export function CreateSlotVault({
   const [overlayState, setOverlayState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [formData, setFormData] = useState<CreateRecurrenceRuleValues | null>(null);
+
   const form = useForm<CreateRecurrenceRuleValues>({
     resolver: zodResolver(createRecurrenceRuleSchema),
     defaultValues: {
@@ -132,6 +135,13 @@ export function CreateSlotVault({
       setValue("startDate", initialDate);
     }
   }, [isOpen, initialDate, setValue]);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setIsConfirming(false);
+      setFormData(null);
+    }
+  }, [isOpen]);
 
   const dayOfWeekName = React.useMemo(() => {
     if (!startDate) return "";
@@ -356,7 +366,13 @@ export function CreateSlotVault({
     return () => clearTimeout(timer);
   }, [startTime, endTime, startDate, teacherId, isOpen, isBatchMode]);
 
-  const onSubmit = async (data: CreateRecurrenceRuleValues) => {
+  const onSubmit = (data: CreateRecurrenceRuleValues) => {
+    setFormData(data);
+    setIsConfirming(true);
+  };
+
+  const handleRealSubmit = async () => {
+    if (!formData) return;
     setIsSubmitting(true);
     setOverlayState("loading");
 
@@ -373,12 +389,12 @@ export function CreateSlotVault({
         return {
           teacherId,
           studentId: null,
-          type: data.type,
-          frequency: data.frequency,
+          type: formData.type,
+          frequency: formData.frequency,
           startTime: candidate.startTime,
           endTime: candidate.endTime,
-          startDate: data.startDate,
-          endDate: data.endDate || null,
+          startDate: formData.startDate,
+          endDate: formData.endDate || null,
         };
       });
 
@@ -405,16 +421,16 @@ export function CreateSlotVault({
     } else {
       // Call optimistic callback before the API request completes!
       onOptimisticCreate?.({
-        startDate: data.startDate,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        type: data.type,
-        frequency: data.frequency,
-        endDate: data.endDate,
+        startDate: formData.startDate,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        type: formData.type,
+        frequency: formData.frequency,
+        endDate: formData.endDate,
       });
 
       try {
-        const result = await createRecurrenceRuleAction(data);
+        const result = await createRecurrenceRuleAction(formData);
         if (result?.data?.success) {
           setOverlayState("success");
           onSuccess?.();
@@ -439,9 +455,16 @@ export function CreateSlotVault({
     if (overlayState === "success") {
       onOpenChange(false);
       form.reset();
+      setIsConfirming(false);
+      setFormData(null);
     }
     setOverlayState("idle");
   };
+
+  const confirmTitle = t("confirmTitle") || (locale === "pt" ? "Confirmar Dados" : "Confirm Details");
+  const confirmDescription = locale === "pt"
+    ? "Revise as informações abaixo antes de criar o horário."
+    : "Review the information below before creating the slot.";
 
   return (
     <Vault open={isOpen} onOpenChange={(open) => {
@@ -457,248 +480,389 @@ export function CreateSlotVault({
           errorSub={errorMsg}
           onDone={handleOverlayDone}
         />
-        <VaultHeader>
-          <VaultIcon type="calendar" />
-          <VaultTitle>{t("createSlotTitle") || "Criar Novo Horário"}</VaultTitle>
-          <VaultDescription>
-            {t("createSlotDescription") || "Configure o horário disponível para aulas."}
-          </VaultDescription>
-        </VaultHeader>
 
-        <VaultBody>
-          <VaultForm onSubmit={handleSubmit(onSubmit)}>
-            <div className="grid grid-cols-2 gap-4">
-              <VaultField label={t("slotType") || "Tipo"} error={errors.type?.message}>
-                <Select
-                  value={watch("type")}
-                  onValueChange={(val: CreateRecurrenceRuleValues["type"]) => setValue("type", val)}
-                >
-                  <SelectTrigger className="w-full h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NORMAL">{t("slotTypes.NORMAL") || "Normal"}</SelectItem>
-                    <SelectItem value="REPOSICAO">{t("slotTypes.REPOSICAO") || "Reposição"}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </VaultField>
+        {isConfirming && formData ? (
+          <>
+            <VaultIcon type="confirm" />
+            <VaultHeader>
+              <VaultTitle>{confirmTitle}</VaultTitle>
+              <VaultDescription>{confirmDescription}</VaultDescription>
+            </VaultHeader>
 
-              <VaultField label={t("frequencyLabel") || "Frequência"} error={errors.frequency?.message}>
-                <Select
-                  value={watch("frequency")}
-                  onValueChange={(val: CreateRecurrenceRuleValues["frequency"]) => setValue("frequency", val)}
-                >
-                  <SelectTrigger className="w-full h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NONE">{t("frequencies.NONE") || (locale === "pt" ? "Único" : "None")}</SelectItem>
-                    <SelectItem value="WEEKLY">{getFrequencyLabel("WEEKLY")}</SelectItem>
-                    <SelectItem value="BIWEEKLY">{getFrequencyLabel("BIWEEKLY")}</SelectItem>
-                    <SelectItem value="MONTHLY">{getFrequencyLabel("MONTHLY")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </VaultField>
-            </div>
-
-            <VaultField label={t("startDate") || "Data"} error={errors.startDate?.message}>
-              <CalendarVault
-                date={startDate}
-                onSelect={(date) => date && setValue("startDate", date)}
-                placeholder={t("selectDate") || "Selecione uma data"}
-                label={t("startDate") || "Data"}
-                className="h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md"
-              />
-            </VaultField>
-
-            <div className="grid grid-cols-2 gap-4">
-              <VaultField label={t("startTime") || "Hora Início"} error={errors.startTime?.message}>
-                <div className="relative">
-                  <VaultInput
-                    type="time"
-                    {...register("startTime")}
-                    className="pl-10"
-                  />
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <VaultBody className="space-y-4">
+              {/* Summary Card */}
+              <div className="rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-gray-50/40 dark:bg-white/5 overflow-hidden">
+                <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-white/10 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
+                  <span className="font-semibold text-sm text-foreground">
+                    {locale === "pt" ? "Informações do Horário" : "Slot Information"}
+                  </span>
                 </div>
-              </VaultField>
-
-              <VaultField label={t("endTime") || "Hora Fim"} error={errors.endTime?.message}>
-                <div className="relative">
-                  <VaultInput
-                    type="time"
-                    {...register("endTime")}
-                    className="pl-10"
-                  />
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                </div>
-              </VaultField>
-            </div>
-
-            {isBatchMode && (
-              <div className="space-y-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 animate-in fade-in slide-in-from-top-1 mt-4">
-                <div className="flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                      Criação em lote ativada
-                    </h4>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                      Você selecionou um período de {Math.floor(totalDuration / 60)}h {totalDuration % 60}m. Vamos dividir este período em aulas individuais de 45 minutos.
-                    </p>
+                <div className="p-4 space-y-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-xs text-muted-foreground block">
+                        {t("slotType") || (locale === "pt" ? "Tipo" : "Type")}
+                      </span>
+                      <span className="font-medium text-foreground mt-0.5 inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground font-semibold">
+                        {formData.type === "NORMAL" ? (t("slotTypes.NORMAL") || "Normal") : (t("slotTypes.REPOSICAO") || "Reposição")}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">
+                        {t("frequencyLabel") || (locale === "pt" ? "Frequência" : "Frequency")}
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {formData.frequency === "NONE" 
+                          ? (t("frequencies.NONE") || (locale === "pt" ? "Único" : "None")) 
+                          : getFrequencyLabel(formData.frequency as "WEEKLY" | "BIWEEKLY" | "MONTHLY")}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">
+                        {t("startDate") || (locale === "pt" ? "Data de Início" : "Start Date")}
+                      </span>
+                      <span className="font-medium text-foreground flex items-center gap-1.5 mt-0.5">
+                        <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                        {format(new Date(formData.startDate), "dd/MM/yyyy", { locale: dateLocale })}
+                      </span>
+                    </div>
+                    {formData.frequency !== "NONE" && formData.endDate && (
+                      <div>
+                        <span className="text-xs text-muted-foreground block">
+                          {t("endDateLabel") || (locale === "pt" ? "Data de Término" : "End Date")}
+                        </span>
+                        <span className="font-medium text-foreground flex items-center gap-1.5 mt-0.5">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                          {format(new Date(formData.endDate), "dd/MM/yyyy", { locale: dateLocale })}
+                        </span>
+                      </div>
+                    )}
+                    {!isBatchMode ? (
+                      <div>
+                        <span className="text-xs text-muted-foreground block">
+                          {locale === "pt" ? "Horário" : "Time"}
+                        </span>
+                        <span className="font-medium text-foreground flex items-center gap-1.5 mt-0.5">
+                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                          {formData.startTime} → {formData.endTime} ({totalDuration} min)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="col-span-1 sm:col-span-2">
+                        <span className="text-xs text-muted-foreground block">
+                          {locale === "pt" ? "Horário do Bloco" : "Block Time"}
+                        </span>
+                        <span className="font-medium text-foreground flex items-center gap-1.5 mt-0.5">
+                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                          {formData.startTime} → {formData.endTime} ({Math.floor(totalDuration / 60)}h {totalDuration % 60}m)
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 gap-2">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    Intervalo de descanso entre aulas
-                  </label>
-                  <Select
-                    value={String(restPeriod)}
-                    onValueChange={(val) => setRestPeriod(Number(val))}
-                  >
-                    <SelectTrigger className="w-full h-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Sem descanso</SelectItem>
-                      <SelectItem value="5">5 minutos</SelectItem>
-                      <SelectItem value="10">10 minutos</SelectItem>
-                      <SelectItem value="15">15 minutos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    <span>Aulas a serem criadas</span>
-                    <span>
-                      {selectedBatchIndexes.size} / {candidateSlots.length}
+              {isBatchMode && (
+                <div className="rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-gray-50/40 dark:bg-white/5 overflow-hidden">
+                  <div className="px-4 py-2.5 bg-gray-50/80 dark:bg-white/10 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center justify-between">
+                    <span className="font-semibold text-sm text-foreground flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-primary" />
+                      {locale === "pt" ? "Aulas selecionadas para criação" : "Selected slots for creation"}
+                    </span>
+                    <span className="text-xs font-bold text-primary">
+                      {locale === "pt" ? `${selectedBatchIndexes.size} aulas` : `${selectedBatchIndexes.size} slots`}
                     </span>
                   </div>
-
-                  {isCheckingBatchConflicts ? (
-                    <div className="py-6 flex items-center justify-center text-xs text-muted-foreground gap-2">
-                      <span className="animate-spin border-2 border-primary border-t-transparent rounded-full w-3.5 h-3.5" />
-                      <span>Verificando conflitos...</span>
-                    </div>
-                  ) : candidateSlots.length === 0 ? (
-                    <p className="text-[10px] text-rose-500 italic py-2">
-                      Nenhuma aula de 45 minutos cabe neste período com {restPeriod} min de descanso.
-                    </p>
-                  ) : (
-                    <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700/50 rounded-md divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
-                      {candidateSlots.map((candidate, idx) => {
-                        const conflictInfo = batchConflicts[idx];
-                        const isSelected = selectedBatchIndexes.has(idx);
-                        
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => {
-                              setSelectedBatchIndexes(prev => {
-                                const next = new Set(prev);
-                                if (next.has(idx)) {
-                                  next.delete(idx);
-                                } else {
-                                  next.add(idx);
-                                }
-                                return next;
-                              });
-                            }}
-                            className={cn(
-                              "flex items-center justify-between p-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors select-none",
-                              conflictInfo?.hasConflict && "bg-rose-500/[0.02] hover:bg-rose-500/[0.04]"
-                            )}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                readOnly
-                                className="w-3.5 h-3.5 rounded border-gray-300 text-primary focus:ring-primary pointer-events-none"
-                              />
-                              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 dark:text-gray-200">
-                                <Clock className="w-3 h-3 text-muted-foreground" />
-                                <span>{candidate.startTime}</span>
-                                <span className="text-gray-400 font-normal">→</span>
-                                <span>{candidate.endTime}</span>
-                              </div>
-                            </div>
-
-                            {conflictInfo?.hasConflict && (
-                              <span className="text-[9px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-500 px-1.5 py-0.5 rounded border border-rose-500/20">
-                                Conflito
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <div className="p-4 max-h-40 overflow-y-auto space-y-1.5 bg-white dark:bg-gray-900">
+                    {Array.from(selectedBatchIndexes).sort((a, b) => a - b).map((idx) => {
+                      const candidate = candidateSlots[idx];
+                      if (!candidate) return null;
+                      return (
+                        <div key={idx} className="flex items-center gap-2 text-xs font-medium text-foreground py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{candidate.startTime}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span>{candidate.endTime}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {conflict && (
-              <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 mt-2">
-                <AlertTriangle className="w-3 h-3 text-rose-500 mt-0.5 shrink-0" />
-                <p className="text-[10px] text-rose-500 leading-tight font-medium">
-                  {t("conflictWarning", { 
-                    start: format(conflict.startAt, "HH:mm"), 
-                    end: format(conflict.endAt, "HH:mm") 
-                  }) || `Conflito detectado: O professor já possui uma aula das ${format(conflict.startAt, "HH:mm")} às ${format(conflict.endAt, "HH:mm")}.`}
-                </p>
-              </div>
-            )}
-
-            {endTime && startTime && endTime <= startTime && (
-              <div className="p-2 rounded bg-amber-500/10 border border-amber-500/20 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 mt-2">
-                <AlertCircle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-                <p className="text-[10px] text-amber-500 leading-tight font-medium">
-                  {t("invalidTimeWarning") || "Horário inválido: O término deve ser após o início."}
-                </p>
-              </div>
-            )}
-
-            {isDurationTooLong && (
-              <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 mt-2">
-                <AlertCircle className="w-3 h-3 text-rose-500 mt-0.5 shrink-0" />
-                <p className="text-[10px] text-rose-500 leading-tight font-medium">
-                  {t("durationTooLongWarning") || "Horários livres não podem ser mais longos que 1 hora."}
-                </p>
-              </div>
-            )}
-
-            {frequency !== "NONE" && (
-              <VaultField label={t("endDateLabel") || "Data Término (Opcional)"} error={errors.endDate?.message}>
-                <CalendarVault
-                  date={endDate || undefined}
-                  onSelect={(date) => setValue("endDate", date || null)}
-                  placeholder={t("noEndDate") || "Sem data de término"}
-                  label={t("endDateLabel") || "Data Término"}
-                  className="h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md"
-                />
-              </VaultField>
-            )}
+              )}
+            </VaultBody>
 
             <VaultFooter className="mt-6">
               <VaultSecondaryButton
                 type="button"
-                onClick={() => onOpenChange(false)}
+                onClick={() => setIsConfirming(false)}
                 disabled={isSubmitting}
               >
-                {t("cancel") || "Cancelar"}
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                {t("backBtn") || (locale === "pt" ? "Voltar" : "Back")}
               </VaultSecondaryButton>
               <VaultPrimaryButton
-                type="submit"
-                disabled={isSubmitting || (isBatchMode ? (selectedBatchIndexes.size === 0 || isCheckingBatchConflicts) : (!!conflict || (endTime <= startTime) || isCheckingConflict || isDurationTooLong))}
+                type="button"
+                onClick={handleRealSubmit}
+                disabled={isSubmitting}
               >
-                {isSubmitting ? (t("creatingSlot") || "Criando...") : (t("createSlot") || "Criar Horário")}
+                {isSubmitting ? (
+                  t("creatingSlot") || "Criando..."
+                ) : (
+                  <>
+                    {t("confirmAndCreateBtn") || (locale === "pt" ? "Confirmar e Criar" : "Confirm and Create")}
+                    <Check className="w-5 h-5 ml-1" />
+                  </>
+                )}
               </VaultPrimaryButton>
             </VaultFooter>
-          </VaultForm>
-        </VaultBody>
+          </>
+        ) : (
+          <>
+            <VaultHeader>
+              <VaultIcon type="calendar" />
+              <VaultTitle>{t("createSlotTitle") || "Criar Novo Horário"}</VaultTitle>
+              <VaultDescription>
+                {t("createSlotDescription") || "Configure o horário disponível para aulas."}
+              </VaultDescription>
+            </VaultHeader>
+
+            <VaultBody>
+              <VaultForm onSubmit={handleSubmit(onSubmit)}>
+                <div className="grid grid-cols-2 gap-4">
+                  <VaultField label={t("slotType") || "Tipo"} error={errors.type?.message}>
+                    <Select
+                      value={watch("type")}
+                      onValueChange={(val: CreateRecurrenceRuleValues["type"]) => setValue("type", val)}
+                    >
+                      <SelectTrigger className="w-full h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NORMAL">{t("slotTypes.NORMAL") || "Normal"}</SelectItem>
+                        <SelectItem value="REPOSICAO">{t("slotTypes.REPOSICAO") || "Reposição"}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </VaultField>
+
+                  <VaultField label={t("frequencyLabel") || "Frequência"} error={errors.frequency?.message}>
+                    <Select
+                      value={watch("frequency")}
+                      onValueChange={(val: CreateRecurrenceRuleValues["frequency"]) => setValue("frequency", val)}
+                    >
+                      <SelectTrigger className="w-full h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">{t("frequencies.NONE") || (locale === "pt" ? "Único" : "None")}</SelectItem>
+                        <SelectItem value="WEEKLY">{getFrequencyLabel("WEEKLY")}</SelectItem>
+                        <SelectItem value="BIWEEKLY">{getFrequencyLabel("BIWEEKLY")}</SelectItem>
+                        <SelectItem value="MONTHLY">{getFrequencyLabel("MONTHLY")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </VaultField>
+                </div>
+
+                <VaultField label={t("startDate") || "Data"} error={errors.startDate?.message}>
+                  <CalendarVault
+                    date={startDate}
+                    onSelect={(date) => date && setValue("startDate", date)}
+                    placeholder={t("selectDate") || "Selecione uma data"}
+                    label={t("startDate") || "Data"}
+                    className="h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md"
+                  />
+                </VaultField>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <VaultField label={t("startTime") || "Hora Início"} error={errors.startTime?.message}>
+                    <div className="relative">
+                      <VaultInput
+                        type="time"
+                        {...register("startTime")}
+                        className="pl-10"
+                      />
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    </div>
+                  </VaultField>
+
+                  <VaultField label={t("endTime") || "Hora Fim"} error={errors.endTime?.message}>
+                    <div className="relative">
+                      <VaultInput
+                        type="time"
+                        {...register("endTime")}
+                        className="pl-10"
+                      />
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    </div>
+                  </VaultField>
+                </div>
+
+                {isBatchMode && (
+                  <div className="space-y-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 animate-in fade-in slide-in-from-top-1 mt-4">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                          Criação em lote ativada
+                        </h4>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          Você selecionou um período de {Math.floor(totalDuration / 60)}h {totalDuration % 60}m. Vamos dividir este período em aulas individuais de 45 minutos.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                        Intervalo de descanso entre aulas
+                      </label>
+                      <Select
+                        value={String(restPeriod)}
+                        onValueChange={(val) => setRestPeriod(Number(val))}
+                      >
+                        <SelectTrigger className="w-full h-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Sem descanso</SelectItem>
+                          <SelectItem value="5">5 minutos</SelectItem>
+                          <SelectItem value="10">10 minutos</SelectItem>
+                          <SelectItem value="15">15 minutos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                        <span>Aulas a serem criadas</span>
+                        <span>
+                          {selectedBatchIndexes.size} / {candidateSlots.length}
+                        </span>
+                      </div>
+
+                      {isCheckingBatchConflicts ? (
+                        <div className="py-6 flex items-center justify-center text-xs text-muted-foreground gap-2">
+                          <span className="animate-spin border-2 border-primary border-t-transparent rounded-full w-3.5 h-3.5" />
+                          <span>Verificando conflitos...</span>
+                        </div>
+                      ) : candidateSlots.length === 0 ? (
+                        <p className="text-[10px] text-rose-500 italic py-2">
+                          Nenhuma aula de 45 minutos cabe neste período com {restPeriod} min de descanso.
+                        </p>
+                      ) : (
+                        <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700/50 rounded-md divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
+                          {candidateSlots.map((candidate, idx) => {
+                            const conflictInfo = batchConflicts[idx];
+                            const isSelected = selectedBatchIndexes.has(idx);
+                            
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => {
+                                  setSelectedBatchIndexes(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(idx)) {
+                                      next.delete(idx);
+                                    } else {
+                                      next.add(idx);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                className={cn(
+                                  "flex items-center justify-between p-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors select-none",
+                                  conflictInfo?.hasConflict && "bg-rose-500/[0.02] hover:bg-rose-500/[0.04]"
+                                )}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    readOnly
+                                    className="w-3.5 h-3.5 rounded border-gray-300 text-primary focus:ring-primary pointer-events-none"
+                                  />
+                                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 dark:text-gray-200">
+                                    <Clock className="w-3 h-3 text-muted-foreground" />
+                                    <span>{candidate.startTime}</span>
+                                    <span className="text-gray-400 font-normal">→</span>
+                                    <span>{candidate.endTime}</span>
+                                  </div>
+                                </div>
+
+                                {conflictInfo?.hasConflict && (
+                                  <span className="text-[9px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-500 px-1.5 py-0.5 rounded border border-rose-500/20">
+                                    Conflito
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {conflict && (
+                  <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 mt-2">
+                    <AlertTriangle className="w-3 h-3 text-rose-500 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-rose-500 leading-tight font-medium">
+                      {t("conflictWarning", { 
+                        start: format(conflict.startAt, "HH:mm"), 
+                        end: format(conflict.endAt, "HH:mm") 
+                      }) || `Conflito detectado: O professor já possui uma aula das ${format(conflict.startAt, "HH:mm")} às ${format(conflict.endAt, "HH:mm")}.`}
+                    </p>
+                  </div>
+                )}
+
+                {endTime && startTime && endTime <= startTime && (
+                  <div className="p-2 rounded bg-amber-500/10 border border-amber-500/20 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 mt-2">
+                    <AlertCircle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-amber-500 leading-tight font-medium">
+                      {t("invalidTimeWarning") || "Horário inválido: O término deve ser após o início."}
+                    </p>
+                  </div>
+                )}
+
+                {isDurationTooLong && (
+                  <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 mt-2">
+                    <AlertCircle className="w-3 h-3 text-rose-500 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-rose-500 leading-tight font-medium">
+                      {t("durationTooLongWarning") || "Horários livres não podem ser mais longos que 1 hora."}
+                    </p>
+                  </div>
+                )}
+
+                {frequency !== "NONE" && (
+                  <VaultField label={t("endDateLabel") || "Data Término (Opcional)"} error={errors.endDate?.message}>
+                    <CalendarVault
+                      date={endDate || undefined}
+                      onSelect={(date) => setValue("endDate", date || null)}
+                      placeholder={t("noEndDate") || "Sem data de término"}
+                      label={t("endDateLabel") || "Data Término"}
+                      className="h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md"
+                    />
+                  </VaultField>
+                )}
+
+                <VaultFooter className="mt-6">
+                  <VaultSecondaryButton
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    disabled={isSubmitting}
+                  >
+                    {t("cancel") || "Cancelar"}
+                  </VaultSecondaryButton>
+                  <VaultPrimaryButton
+                    type="submit"
+                    disabled={isSubmitting || (isBatchMode ? (selectedBatchIndexes.size === 0 || isCheckingBatchConflicts) : (!!conflict || (endTime <= startTime) || isCheckingConflict || isDurationTooLong))}
+                  >
+                    {isSubmitting ? (t("creatingSlot") || "Criando...") : (t("createSlot") || "Criar Horário")}
+                  </VaultPrimaryButton>
+                </VaultFooter>
+              </VaultForm>
+            </VaultBody>
+          </>
+        )}
       </VaultContent>
     </Vault>
   );

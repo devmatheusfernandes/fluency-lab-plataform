@@ -243,6 +243,11 @@ const customCache: RuntimeCaching[] = [
       ],
     }),
   },
+  // Exclude the /hub redirector route from caching to prevent Serwist redirect caching errors
+  {
+    matcher: ({ url: { pathname } }: RouteMatchCallbackOptions) => pathname === "/hub" || pathname === "/hub/",
+    handler: new NetworkOnly(),
+  },
   // 17. HTML Document Requests (NetworkFirst)
   {
     matcher: ({ request, url: { pathname }, sameOrigin }: RouteMatchCallbackOptions) =>

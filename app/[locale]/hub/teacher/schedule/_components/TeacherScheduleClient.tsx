@@ -236,21 +236,23 @@ export function TeacherScheduleClient({
   );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={isStandalone ? "" : "flex flex-col gap-2"}>
       <Header 
         title="Minha Agenda" 
         subtitle="Gerencie suas aulas e períodos de recesso"
         className="contents"
         user={user}
         actions={showInHeader ? headerActionsList : undefined}
+        showSubHeader={(!isStandalone)}
       />
 
-      <div className="px-4 pb-10">
+      <div className={isStandalone ? "" : "container"}>
         <CalendarView
           events={events}
           onEventClick={handleEventClick}
           onDateClick={setSelectedDate}
           headerActions={!showInHeader ? calendarActions : undefined}
+          className={isStandalone ? "rounded-none!" : ""}
         />
       </div>
 
