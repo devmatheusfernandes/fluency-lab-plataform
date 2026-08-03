@@ -129,7 +129,17 @@ export function ActionsTab({
     }
   };
 
-  if (!isActive && !pixData && !cancellationPending) {
+  const isCancellationPending = cancellationPending || !!cancellationPixCode || activeSubscription?.status === "pending_fee";
+
+  let feeAmount = cancellationAmount;
+  if (!feeAmount && activeSubscription?.status === "pending_fee" && activeSubscription.cancellationFeeInstallmentId) {
+    const feeInstallment = installments?.find(i => i.id === activeSubscription.cancellationFeeInstallmentId);
+    if (feeInstallment) {
+      feeAmount = feeInstallment.amount;
+    }
+  }
+
+  if (!isActive && !isCancellationPending) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-4 border border-dashed rounded-lg bg-muted/5">
         <CheckCircle2 className="w-12 h-12 text-muted-foreground opacity-20" />
@@ -181,7 +191,7 @@ export function ActionsTab({
             </div>
 
             <div className="p-6 flex flex-col gap-6">
-              {!pixData ? (
+              {!isCancellationPending ? (
                 <>
                   <div className="flex flex-col gap-2">
                     <p className="font-black text-sm tracking-tight">{t("deactivateStudent")}</p>
@@ -221,9 +231,9 @@ export function ActionsTab({
                   <div className="text-center">
                     <Badge variant="outline" className="mb-2 font-black uppercase tracking-widest text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/20">{t("waitingPayment")}</Badge>
                     <p className="font-black text-sm tracking-tight">{t("feeGenerated")}</p>
-                    {pixData.amount && (
+                    {feeAmount && (
                       <p className="text-xl font-black text-primary mt-1">
-                        {(pixData.amount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {(feeAmount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </p>
                     )}
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
@@ -231,30 +241,49 @@ export function ActionsTab({
                     </p>
                   </div>
 
-                  <div className="p-4 bg-white rounded-md shadow-sm border flex flex-col items-center gap-4 w-full max-w-sm">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={pixData.pixImage} alt="QR Code PIX" className="w-48 h-48" />
-                    <Button variant="outline" size="sm" className="w-full gap-2 font-bold text-[10px] uppercase tracking-widest" onClick={copyPix}>
-                      <Copy className="w-3 h-3" />
-                      {t("copyPix")}
-                    </Button>
+                  {pixData?.pixCode && (
+                    <div className="p-4 bg-white rounded-md shadow-sm border flex flex-col items-center gap-4 w-full max-w-sm">
+                      {pixData.pixImage && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={pixData.pixImage} alt="QR Code PIX" className="w-48 h-48" />
+                      )}
+                      <Button variant="outline" size="sm" className="w-full gap-2 font-bold text-[10px] uppercase tracking-widest" onClick={copyPix}>
+                        <Copy className="w-3 h-3" />
+                        {t("copyPix")}
+                      </Button>
 
-                    {onResendCancellationFee && (
+                      {onResendCancellationFee && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="w-full gap-2 font-bold text-xs"
+                          onClick={onResendCancellationFee}
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Reenviar Taxa (E-mail / WhatsApp)
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {!pixData?.pixCode && onResendCancellationFee && (
+                    <div className="flex flex-col items-center gap-3">
                       <Button
                         type="button"
                         variant="secondary"
                         size="sm"
-                        className="w-full gap-2 font-bold text-xs"
+                        className="gap-2 font-bold text-xs"
                         onClick={onResendCancellationFee}
                       >
                         <Send className="w-3.5 h-3.5" />
                         Reenviar Taxa (E-mail / WhatsApp)
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   <p className="text-[10px] text-center text-muted-foreground max-w-xs leading-relaxed">
-                    O aluno recebeu este QR Code via E-mail e WhatsApp. Você também pode acompanhá-lo na aba de Pagamentos.
+                    O aluno recebeu a cobrança via E-mail e WhatsApp. Você também pode acompanhá-la na aba de Pagamentos.
                   </p>
                 </div>
               )}
