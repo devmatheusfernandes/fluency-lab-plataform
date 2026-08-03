@@ -15,7 +15,7 @@ import type { User } from "../user.schema";
 import type { SubscriptionWithPlan, Installment } from "../../billing/billing.types";
 import type { SlotInstanceWithDetails } from "../../scheduling/scheduling.types";
 import type { ContractWithTemplate } from "../../contract/contract.types";
-import { updateUserAction } from "../user.actions";
+import { updateUserAction, resendCancellationFeeAction } from "../user.actions";
 import { getContractDownloadUrlAction } from "../../contract/contract.actions";
 import { updateInstallmentAction, generateInstallmentInvoiceAction, resendInstallmentReminderAction } from "../../billing/billing.actions";
 import { PersonalInfoTab } from "./userDetails/PersonalInfoTab";
@@ -195,6 +195,22 @@ export function UserDetailsClient({
     }
   };
 
+  const handleResendCancellationFee = async () => {
+    setIsUpdating(true);
+    try {
+      const result = await resendCancellationFeeAction({ userId: user.id });
+      if (result?.data?.success) {
+        notify.success("Taxa de cancelamento reenviada com sucesso!");
+      } else {
+        notify.error(result?.data?.error || "Erro ao reenviar taxa de cancelamento.");
+      }
+    } catch {
+      notify.error("Erro ao processar solicitação.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleViewContract = async (id: string) => {
     setLoadingContractId(id);
     try {
@@ -364,6 +380,11 @@ export function UserDetailsClient({
               onMarkAsPaid={handleMarkAsPaid}
               onGenerateInvoice={handleGenerateInvoice}
               onResendReminder={handleResendReminder}
+              cancellationPending={user.cancellationPending}
+              cancellationPixCode={user.cancellationPixCode}
+              cancellationPixImage={user.cancellationPixImage}
+              cancellationAmount={user.cancellationAmount}
+              onResendCancellationFee={handleResendCancellationFee}
             />
           ) : (
             <TeacherEarningsTab
@@ -413,6 +434,11 @@ export function UserDetailsClient({
               isActive={user.isActive ?? true}
               activeSubscription={activeSubscription}
               installments={installments}
+              cancellationPending={user.cancellationPending}
+              cancellationPixCode={user.cancellationPixCode}
+              cancellationPixImage={user.cancellationPixImage}
+              cancellationAmount={user.cancellationAmount}
+              onResendCancellationFee={handleResendCancellationFee}
             />
           </TabsContent>
         )}

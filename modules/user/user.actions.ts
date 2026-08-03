@@ -476,10 +476,28 @@ export const requestStudentDeactivationAction = adminAction
         return { success: true, feeRequired: false };
       }
 
-      const result = await contractService.requestCancellation(activeContract.id);
+      const result = (await contractService.requestCancellation(activeContract.id)) as {
+        success: boolean;
+        feeRequired: boolean;
+        pixCode?: string;
+        pixImage?: string;
+        amount?: number;
+        error?: string;
+      };
+
+      if (result.feeRequired) {
+        await userService.updateUser(userId, {
+          cancellationPending: true,
+          cancellationPixCode: result.pixCode,
+          cancellationPixImage: result.pixImage,
+          cancellationAmount: result.amount,
+        });
+      }
 
       revalidatePath("/hub/admin/users");
+      revalidatePath(`/hub/admin/users/${userId}`);
       revalidatePath("/hub/manager/users");
+      revalidatePath(`/hub/manager/users/${userId}`);
 
       return result;
     } catch (error) {
@@ -747,6 +765,54 @@ export const trackPwaInstallationAction = protectedAction
       return { success: true };
     } catch (error) {
       console.error("[trackPwaInstallationAction] Error:", error);
+      return { success: false, error: "error" };
+    }
+  });
+
+export const resendCancellationFeeAction = adminAction
+  .metadata({ name: "resendCancellationFee" })
+  .inputSchema(z.object({ userId: z.string() }))
+  .action(async ({ parsedInput }) => {
+    try {
+      const user = await userService.getUserById(parsedInput.userId);
+      if (!user) return { success: false, error: "userNotFound" };
+
+      if (!user.cancellationPixCode || !user.cancellationAmount) {
+        return { success: false, error: "noCancellationFee" };
+      }
+
+      if (user.email) {
+        await communicationService.sendNewInvoiceEmail(user.email, {
+          studentName: user.name || "Aluno",
+          amount: user.cancellationAmount,
+          dueDate: new Date(),
+          pixPayload: user.cancellationPixCode,
+          pixImage: user.cancellationPixImage || "",
+          description: "Taxa de Cancelamento de Matrícula",
+        });
+      }
+
+      const rawCellphone = user.cellphone && user.cellphone.includes(":")
+        ? decrypt(user.cellphone)
+        : user.cellphone;
+
+      if (rawCellphone) {
+        try {
+          await communicationService.sendPaymentReminderWhatsApp({
+            cellphone: rawCellphone,
+            studentName: user.name || "Aluno",
+            amount: user.cancellationAmount,
+            dueDate: new Date(),
+            pixPayload: user.cancellationPixCode,
+          });
+        } catch (wsErr) {
+          console.error("[resendCancellationFeeAction] WhatsApp error:", wsErr);
+        }
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("[resendCancellationFeeAction] Error:", error);
       return { success: false, error: "error" };
     }
   });

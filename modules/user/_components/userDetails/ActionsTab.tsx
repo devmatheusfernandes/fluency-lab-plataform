@@ -22,6 +22,11 @@ interface ActionsTabProps {
   isActive: boolean;
   activeSubscription?: SubscriptionWithPlan | null;
   installments?: Installment[];
+  cancellationPending?: boolean;
+  cancellationPixCode?: string | null;
+  cancellationPixImage?: string | null;
+  cancellationAmount?: number | null;
+  onResendCancellationFee?: () => Promise<void>;
 }
 
 export function ActionsTab({ 
@@ -32,25 +37,37 @@ export function ActionsTab({
   userRole,
   isActive,
   activeSubscription,
-  installments
+  installments,
+  cancellationPending,
+  cancellationPixCode,
+  cancellationPixImage,
+  cancellationAmount,
+  onResendCancellationFee,
 }: ActionsTabProps) {
   const t = useTranslations("UserManagement");
   const [password, setPassword] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [pixData, setPixData] = useState<{ pixCode: string; pixImage: string } | null>(null);
+  const [pixData, setPixData] = useState<{ pixCode: string; pixImage: string; amount?: number } | null>(null);
 
   useEffect(() => {
-    if (activeSubscription?.status === "pending_fee" && activeSubscription.cancellationFeeInstallmentId) {
+    if (cancellationPixCode && cancellationPixImage) {
+      setPixData({
+        pixCode: cancellationPixCode,
+        pixImage: cancellationPixImage,
+        amount: cancellationAmount ?? undefined,
+      });
+    } else if (activeSubscription?.status === "pending_fee" && activeSubscription.cancellationFeeInstallmentId) {
       const feeInstallment = installments?.find(i => i.id === activeSubscription.cancellationFeeInstallmentId);
       if (feeInstallment?.pixPayload && feeInstallment?.pixImage) {
         setPixData({
           pixCode: feeInstallment.pixPayload,
-          pixImage: feeInstallment.pixImage
+          pixImage: feeInstallment.pixImage,
+          amount: feeInstallment.amount,
         });
       }
     }
-  }, [activeSubscription, installments]);
+  }, [cancellationPixCode, cancellationPixImage, cancellationAmount, activeSubscription, installments]);
 
   const handleDeactivate = async () => {
     if (!password) {
@@ -63,11 +80,12 @@ export function ActionsTab({
       const result = await requestStudentDeactivationAction({ userId, password });
       
       if (result?.data && "success" in result.data && result.data.success) {
-        const data = result.data as { feeRequired: boolean; pixCode?: string; pixImage?: string };
+        const data = result.data as { feeRequired: boolean; pixCode?: string; pixImage?: string; amount?: number };
         if (data.feeRequired) {
           setPixData({ 
             pixCode: data.pixCode!, 
-            pixImage: data.pixImage! 
+            pixImage: data.pixImage!,
+            amount: data.amount,
           });
           notify.warning(t("feeNotification"));
         } else {
@@ -111,7 +129,7 @@ export function ActionsTab({
     }
   };
 
-  if (!isActive && !pixData) {
+  if (!isActive && !pixData && !cancellationPending) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-4 border border-dashed rounded-lg bg-muted/5">
         <CheckCircle2 className="w-12 h-12 text-muted-foreground opacity-20" />
@@ -203,18 +221,36 @@ export function ActionsTab({
                   <div className="text-center">
                     <Badge variant="outline" className="mb-2 font-black uppercase tracking-widest text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/20">{t("waitingPayment")}</Badge>
                     <p className="font-black text-sm tracking-tight">{t("feeGenerated")}</p>
+                    {pixData.amount && (
+                      <p className="text-xl font-black text-primary mt-1">
+                        {(pixData.amount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </p>
+                    )}
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
                       {t("feeGeneratedDesc")}
                     </p>
                   </div>
 
-                  <div className="p-4 bg-white rounded-md shadow-sm border flex flex-col items-center gap-4">
+                  <div className="p-4 bg-white rounded-md shadow-sm border flex flex-col items-center gap-4 w-full max-w-sm">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={pixData.pixImage} alt="QR Code PIX" className="w-48 h-48" />
                     <Button variant="outline" size="sm" className="w-full gap-2 font-bold text-[10px] uppercase tracking-widest" onClick={copyPix}>
                       <Copy className="w-3 h-3" />
                       {t("copyPix")}
                     </Button>
+
+                    {onResendCancellationFee && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="w-full gap-2 font-bold text-xs"
+                        onClick={onResendCancellationFee}
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        Reenviar Taxa (E-mail / WhatsApp)
+                      </Button>
+                    )}
                   </div>
 
                   <p className="text-[10px] text-center text-muted-foreground max-w-xs leading-relaxed">

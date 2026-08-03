@@ -35,6 +35,11 @@ interface StudentPaymentTabProps {
   onMarkAsPaid: (id: string) => Promise<void>;
   onGenerateInvoice?: (id: string, options?: { force?: boolean }) => Promise<void>;
   onResendReminder?: (id: string) => Promise<void>;
+  cancellationPending?: boolean;
+  cancellationPixCode?: string | null;
+  cancellationPixImage?: string | null;
+  cancellationAmount?: number | null;
+  onResendCancellationFee?: () => Promise<void>;
 }
 
 
@@ -51,6 +56,11 @@ export function StudentPaymentTab({
   onMarkAsPaid,
   onGenerateInvoice,
   onResendReminder,
+  cancellationPending,
+  cancellationPixCode,
+  cancellationPixImage,
+  cancellationAmount,
+  onResendCancellationFee,
 }: StudentPaymentTabProps) {
   const t = useTranslations("UserManagement");
 
@@ -75,6 +85,76 @@ export function StudentPaymentTab({
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Cancellation Fee Section */}
+      {(cancellationPending || cancellationPixCode || activeSubscription?.status === "pending_fee") && (
+        <div className="card overflow-hidden border-amber-500/30 bg-amber-500/[0.02]">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-amber-500/20 bg-amber-500/5">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-500" />
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-600 dark:text-amber-400">
+                Taxa de Cancelamento de Matrícula
+              </p>
+            </div>
+            <Badge variant="outline" className="text-[9px] h-4 font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20">
+              Aguardando Pagamento
+            </Badge>
+          </div>
+
+          <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex flex-col gap-2 max-w-sm">
+              <p className="font-black text-lg tracking-tight">Cobrança de Cancelamento</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Esta taxa de cancelamento foi gerada no momento da solicitação de desativação do aluno. O aluno recebeu este código PIX por E-mail e WhatsApp.
+              </p>
+              {cancellationAmount && (
+                <div className="mt-2">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Valor da Taxa</p>
+                  <p className="text-2xl font-black text-primary">
+                    {(cancellationAmount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {cancellationPixCode && (
+              <div className="p-4 bg-white rounded-md shadow-sm border border-border flex flex-col items-center gap-3 shrink-0 w-full md:w-auto">
+                {cancellationPixImage && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={cancellationPixImage} alt="QR Code PIX Taxa" className="w-40 h-40" />
+                )}
+                <div className="flex gap-2 w-full">
+                  <Input readOnly className="input text-xs font-mono select-all h-9 flex-1" value={cancellationPixCode} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(cancellationPixCode);
+                        notify.success(t("pixCopySuccess") || "Código copiado!");
+                      } catch {
+                        notify.error("Erro ao copiar código.");
+                      }
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                {onResendCancellationFee && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full gap-2 font-bold text-xs"
+                    onClick={onResendCancellationFee}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Reenviar Taxa (E-mail / WhatsApp)
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* Subscription block */}
       {!activeSubscription ? (
         <div className="border border-dashed border-border rounded-md py-16 flex flex-col items-center gap-3">
