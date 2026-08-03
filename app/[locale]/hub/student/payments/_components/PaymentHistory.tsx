@@ -3,7 +3,7 @@
 import { useTranslations, useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FileText, Receipt, Download, ChevronDown, ChevronUp, Copy, RotateCw, CreditCard } from "lucide-react";
+import { FileText, Receipt, ChevronDown, ChevronUp, Copy, RotateCw, CreditCard } from "lucide-react";
 import { notify } from "@/components/ui/toaster";
 import { motion, AnimatePresence } from "framer-motion";
 import { containerVariants, itemVariants } from "@/lib/animations";
@@ -61,9 +61,9 @@ export function PaymentHistory({ initialData }: PaymentHistoryProps) {
     }
   };
 
-  const handleGetInvoice = () => {
-    notify.info("A implementar");
-  };
+  // const handleGetInvoice = () => {
+  //   notify.info("A implementar");
+  // };
 
   const handleViewReceipt = (id: string) => {
     router.push(`/hub/financial/receipt/${id}`);
@@ -215,7 +215,7 @@ export function PaymentHistory({ initialData }: PaymentHistoryProps) {
                       <span className="hidden sm:inline">{t("viewReceipt")}</span>
                     </Button>
                   )}
-                  <Button
+                  {/* <Button
                     variant="ghost"
                     size="sm"
                     onClick={(e) => {
@@ -226,7 +226,7 @@ export function PaymentHistory({ initialData }: PaymentHistoryProps) {
                   >
                     <Download className="w-4 h-4 mr-2" />
                     <span className="hidden sm:inline">{t("getInvoice")}</span>
-                  </Button>
+                  </Button> */}
 
                   {hasActionDetails && (
                     <div className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors ml-1 p-1">

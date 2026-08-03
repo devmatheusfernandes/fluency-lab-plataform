@@ -470,7 +470,7 @@ export function StudentPaymentStatusCard({
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
+              <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
               <div className="flex flex-col items-center">
                 {daysUntilDue !== null && daysUntilDue > 7 ? (
                   <>
@@ -484,6 +484,7 @@ export function StudentPaymentStatusCard({
                       {t("nextInvoiceReleaseDesc", {
                         dueDate: subscription.currentInstallment?.dueDate
                           ? new Date(subscription.currentInstallment.dueDate).toLocaleDateString(locale, {
+                              timeZone: "UTC",
                               day: "2-digit",
                               month: "long",
                             })
@@ -506,19 +507,33 @@ export function StudentPaymentStatusCard({
                 )}
               </div>
 
-              <Button
-                size="default"
-                variant="outline"
-                className="gap-2 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
-              >
-                <a
-                  href={`/${locale}/hub/student/payments`}
-                  className="flex flex-row items-center gap-2"
+              <div className="flex flex-col gap-2 w-full max-w-xs">
+                {subscription.currentInstallment?.id && (
+                  <Button
+                    size="default"
+                    className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+                    onClick={handleGenerateInvoice}
+                    disabled={isGenerating}
+                  >
+                    <QrCode className={cn("w-4 h-4 mr-1", isGenerating && "animate-spin")} />
+                    {isGenerating ? t("generating") || "Gerando..." : t("payNow") || "Quero pagar agora"}
+                  </Button>
+                )}
+
+                <Button
+                  size="default"
+                  variant="outline"
+                  className="w-full gap-2 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
                 >
-                  <Wallet2 className="w-4 h-4 mr-2 text-zinc-500" />
-                  {t("managePayments") || "Gerenciar pagamentos"}
-                </a>
-              </Button>
+                  <a
+                    href={`/${locale}/hub/student/payments`}
+                    className="flex flex-row items-center gap-2 justify-center w-full"
+                  >
+                    <Wallet2 className="w-4 h-4 mr-2 text-zinc-500" />
+                    {t("managePayments") || "Gerenciar pagamentos"}
+                  </a>
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -555,6 +570,7 @@ export function StudentPaymentStatusCard({
                       ? new Date(
                           subscription.currentInstallment.dueDate,
                         ).toLocaleDateString(locale, {
+                          timeZone: "UTC",
                           day: "2-digit",
                           month: "short",
                         })
@@ -573,7 +589,7 @@ export function StudentPaymentStatusCard({
               {subscription.lastPaymentDate
                 ? new Date(subscription.lastPaymentDate).toLocaleDateString(
                     locale,
-                    { day: "2-digit", month: "short", year: "2-digit" },
+                    { timeZone: "UTC", day: "2-digit", month: "short", year: "2-digit" },
                   )
                 : "-"}
             </span>
