@@ -21,6 +21,10 @@ export const systemSettingsTable = pgTable("system_settings", {
     .$type<{ question: string; answer: string }[]>()
     .notNull()
     .default(sql`'[]'`),
+  allowedWhatsappTemplates: jsonb("allowed_whatsapp_templates")
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'`),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at")
     .notNull()
@@ -43,6 +47,7 @@ export const updateSystemSettingsSchema = z.object({
       answer: z.string().min(1, "Resposta não pode ser vazia"),
     })
   ),
+  allowedWhatsappTemplates: z.array(z.string()).optional(),
 });
 
 export type SystemSettings = typeof systemSettingsTable.$inferSelect;

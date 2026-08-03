@@ -4,6 +4,7 @@ import { communicationRepository } from "./communication.repository";
 import { decrypt } from "@/lib/cryptography";
 import { whatsappConversationsTable } from "./communication.schema";
 import { adminRtdb } from "@/lib/firebase-admin";
+import { settingsService } from "@/modules/settings/settings.service";
 
 
 import { render } from "@react-email/render";
@@ -1448,6 +1449,34 @@ export class CommunicationService {
 
   async getTotalUnreadCount() {
     return communicationRepository.getTotalUnreadCount();
+  }
+
+  async getConversationStudents(conversationId: string) {
+    return communicationRepository.getConversationStudents(conversationId);
+  }
+
+  async addConversationStudent(conversationId: string, studentId: string) {
+    return communicationRepository.addConversationStudent(conversationId, studentId);
+  }
+
+  async removeConversationStudent(conversationId: string, studentId: string) {
+    return communicationRepository.removeConversationStudent(conversationId, studentId);
+  }
+
+  async getAllowedTemplates(): Promise<string[]> {
+    const settings = await settingsService.getSettings();
+    if (settings && Array.isArray(settings.allowedWhatsappTemplates) && settings.allowedWhatsappTemplates.length > 0) {
+      return settings.allowedWhatsappTemplates;
+    }
+    return [
+      "payment_reminder_v4",
+      "payment_reminder_v5",
+      "payment_overdue_v4",
+      "payment_overdue_v5",
+      "welcome_first",
+      "talk_to_person",
+      "class_scheduled_student_v1",
+    ];
   }
 }
 

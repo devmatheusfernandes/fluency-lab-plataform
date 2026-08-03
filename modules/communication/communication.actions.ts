@@ -206,5 +206,53 @@ export const getWhatsAppUnreadCountAction = managerAction
     }
   });
 
+export const getConversationStudentsAction = managerAction
+  .metadata({ name: "getConversationStudents" })
+  .schema(z.object({ conversationId: z.string() }))
+  .action(async ({ parsedInput }) => {
+    try {
+      const students = await communicationService.getConversationStudents(parsedInput.conversationId);
+      return { success: true, data: students };
+    } catch (err) {
+      return { success: false, data: [], error: (err as Error).message };
+    }
+  });
+
+export const addConversationStudentAction = managerAction
+  .metadata({ name: "addConversationStudent" })
+  .schema(z.object({ conversationId: z.string(), studentId: z.string() }))
+  .action(async ({ parsedInput }) => {
+    try {
+      await communicationService.addConversationStudent(parsedInput.conversationId, parsedInput.studentId);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+export const removeConversationStudentAction = managerAction
+  .metadata({ name: "removeConversationStudent" })
+  .schema(z.object({ conversationId: z.string(), studentId: z.string() }))
+  .action(async ({ parsedInput }) => {
+    try {
+      await communicationService.removeConversationStudent(parsedInput.conversationId, parsedInput.studentId);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+export const getWhatsAppAllowedTemplatesAction = managerAction
+  .metadata({ name: "getWhatsAppAllowedTemplates" })
+  .action(async () => {
+    try {
+      const templates = await communicationService.getAllowedTemplates();
+      return { success: true, data: templates };
+    } catch {
+      return { success: false, data: [] };
+    }
+  });
+
+
 
 

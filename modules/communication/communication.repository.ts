@@ -1,11 +1,52 @@
 import { db } from "@/lib/db";
-import { whatsappConversationsTable, whatsappMessagesTable, whatsappQuickRepliesTable, emailsTable } from "./communication.schema";
+import { whatsappConversationsTable, whatsappMessagesTable, whatsappQuickRepliesTable, emailsTable, whatsappConversationStudentsTable } from "./communication.schema";
 import { usersTable } from "../user/user.schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { EmailMessage } from "./communication.types";
 
 
 export const communicationRepository = {
+  async getConversationStudents(conversationId: string) {
+    return db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        email: usersTable.email,
+        photoUrl: usersTable.photoUrl,
+        cellphone: usersTable.cellphone,
+        junctionId: whatsappConversationStudentsTable.id,
+      })
+      .from(whatsappConversationStudentsTable)
+      .innerJoin(usersTable, eq(whatsappConversationStudentsTable.studentId, usersTable.id))
+      .where(eq(whatsappConversationStudentsTable.conversationId, conversationId));
+  },
+
+  async addConversationStudent(conversationId: string, studentId: string) {
+    const existing = await db.query.whatsappConversationStudentsTable.findFirst({
+      where: (table, { and: andFn, eq: eqFn }) => andFn(
+        eqFn(table.conversationId, conversationId),
+        eqFn(table.studentId, studentId)
+      ),
+    });
+    if (!existing) {
+      await db.insert(whatsappConversationStudentsTable).values({
+        conversationId,
+        studentId,
+      });
+    }
+  },
+
+  async removeConversationStudent(conversationId: string, studentId: string) {
+    await db
+      .delete(whatsappConversationStudentsTable)
+      .where(
+        and(
+          eq(whatsappConversationStudentsTable.conversationId, conversationId),
+          eq(whatsappConversationStudentsTable.studentId, studentId)
+        )
+      );
+  },
+
   async findConversationByWaId(waId: string) {
     return db.query.whatsappConversationsTable.findFirst({
       where: eq(whatsappConversationsTable.waId, waId),

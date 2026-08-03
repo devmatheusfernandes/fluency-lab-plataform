@@ -18,7 +18,10 @@ import {
   updateWhatsAppConversationLabelsAction,
   archiveWhatsAppConversationAction,
   associateWhatsAppStudentAction,
-  findStudentsByWhatsAppPhoneAction
+  findStudentsByWhatsAppPhoneAction,
+  addConversationStudentAction,
+  removeConversationStudentAction,
+  getConversationStudentsAction
 } from "@/modules/communication/communication.actions";
 import { searchStudentsAction } from "@/modules/user/user.actions";
 import { notify } from "@/components/ui/toaster";
@@ -88,20 +91,25 @@ export function DetailsVault({
   const [isLoadingAssociated, setIsLoadingAssociated] = useState(false);
 
   useEffect(() => {
-    if (open && selectedConv?.waId) {
+    if (open && selectedConv?.id) {
       setIsLoadingAssociated(true);
-      findStudentsByWhatsAppPhoneAction({ phone: selectedConv.waId })
-        .then((res) => {
-          if (res?.data?.success && res.data.data) {
-            setAssociatedStudents(res.data.data);
-          } else {
-            setAssociatedStudents([]);
-          }
+      Promise.all([
+        findStudentsByWhatsAppPhoneAction({ phone: selectedConv.waId }),
+        getConversationStudentsAction({ conversationId: selectedConv.id }),
+      ])
+        .then(([phoneRes, linkedRes]) => {
+          const listByPhone = (phoneRes?.data?.success && phoneRes.data.data) ? phoneRes.data.data : [];
+          const listLinked = (linkedRes?.data?.success && linkedRes.data.data) ? linkedRes.data.data : [];
+          const map = new Map<string, { id: string; name: string | null; email: string | null; photoUrl: string | null }>();
+          [...listByPhone, ...listLinked].forEach((st) => {
+            if (st && st.id) map.set(st.id, st);
+          });
+          setAssociatedStudents(Array.from(map.values()));
         })
         .catch(() => setAssociatedStudents([]))
         .finally(() => setIsLoadingAssociated(false));
     }
-  }, [open, selectedConv?.waId]);
+  }, [open, selectedConv?.id, selectedConv?.waId]);
 
   const handleSearchStudents = async (query: string) => {
     if (query.trim().length < 2) {
@@ -232,7 +240,7 @@ export function DetailsVault({
       <VaultContent className="max-w-md">
         <VaultHeader>
           <VaultTitle>Dados do Contato</VaultTitle>
-          <VaultDescription>Visualize e gerencie as etiquetas e o nome do contato</VaultDescription>
+          <VaultDescription>Visualize e gerencie as etiquetas e alunos vinculados</VaultDescription>
         </VaultHeader>
         <VaultBody className="space-y-5 pt-3">
           
@@ -285,141 +293,143 @@ export function DetailsVault({
             </form>
           </div>
 
-          {/* Associação de Estudante */}
-          <div className="space-y-2 pb-4 border-b border-border/40">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estudante Vinculado</h4>
-            
-            {selectedConv.studentId ? (
-              <div className="flex items-center justify-between bg-muted/20 border border-border/10 p-2.5 rounded-xl gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Avatar seed={selectedConv.studentId} photoUrl={selectedConv.photoUrl} name={selectedConv.studentName} size={36} />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">{selectedConv.studentName}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">ID: {selectedConv.studentId.substring(0, 8)}...</p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    setIsLinking(true);
-                    try {
-                      const res = await associateWhatsAppStudentAction({
-                        conversationId: selectedConv.id,
-                        studentId: null
-                      });
-                      if (res?.data?.success) {
-                        setSelectedConv({
-                          ...selectedConv,
-                          studentId: null,
-                          studentName: null,
-                          photoUrl: null
-                        });
-                        mutateConvs();
-                        notify.success("Estudante desvinculado!");
-                      } else {
-                        notify.error("Erro ao desvincular estudante.");
-                      }
-                    } catch {
-                      notify.error("Erro técnico ao desvincular.");
-                    } finally {
-                      setIsLinking(false);
-                    }
-                  }}
-                  disabled={isLinking}
-                  className="h-7 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-500/10 px-2.5 rounded-lg font-semibold shrink-0"
-                >
-                  Remover
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="relative">
-                  <Input
-                    value={studentSearchQuery}
-                    onChange={(e) => {
-                      setStudentSearchQuery(e.target.value);
-                      handleSearchStudents(e.target.value);
-                    }}
-                    placeholder="Buscar estudante por nome..."
-                    className="h-9 text-xs rounded-xl focus-visible:ring-primary/20 bg-muted/20 border-border/30"
-                  />
-                  {isSearchingStudents && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-                
-                {searchResults.length > 0 && (
-                  <div className="border border-border/20 bg-card rounded-xl max-h-36 overflow-y-auto divide-y divide-border/10 shadow-lg select-none">
-                    {searchResults.map((student) => (
-                      <button
-                        key={student.id}
-                        type="button"
-                        onClick={async () => {
-                          setIsLinking(true);
-                          try {
-                            const res = await associateWhatsAppStudentAction({
-                              conversationId: selectedConv.id,
-                              studentId: student.id
-                            });
-                            if (res?.data?.success) {
-                              setSelectedConv({
-                                ...selectedConv,
-                                studentId: student.id,
-                                studentName: student.name,
-                                photoUrl: student.photoUrl
-                              });
-                              mutateConvs();
-                              setStudentSearchQuery("");
-                              setSearchResults([]);
-                              notify.success("Estudante vinculado!");
-                            } else {
-                              notify.error("Erro ao vincular estudante.");
-                            }
-                          } catch {
-                            notify.error("Erro técnico.");
-                          } finally {
-                            setIsLinking(false);
-                          }
-                        }}
-                        disabled={isLinking}
-                        className="w-full flex items-center gap-2 p-2 text-left hover:bg-muted/50 transition-colors"
-                      >
-                        <Avatar seed={student.id} photoUrl={student.photoUrl} name={student.name} size={28} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground truncate">{student.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{student.email}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Associação Multi-Aluno (Pais com múltiplos filhos) */}
+          <div className="space-y-3 pb-4 border-b border-border/40">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Alunos Vinculados ({associatedStudents.length})
+              </h4>
+            </div>
 
-          {/* Alunos associados a este número */}
-          <div className="space-y-2 pb-4 border-b border-border/40">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Alunos com este Telefone</h4>
+            {/* List of Linked Students */}
             {isLoadingAssociated ? (
-              <div className="flex justify-center py-2">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
               </div>
             ) : associatedStudents.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground italic">Nenhum aluno cadastrado com este telefone.</p>
+              <p className="text-[11px] text-muted-foreground italic">Nenhum aluno vinculado a este contato.</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {associatedStudents.map((student) => (
-                  <div key={student.id} className="flex items-center gap-2 p-2 bg-muted/10 border border-border/10 rounded-lg">
-                    <Avatar seed={student.id} photoUrl={student.photoUrl} name={student.name} size={28} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-foreground truncate">{student.name}</p>
-                      <p className="text-[9px] text-muted-foreground truncate">{student.email}</p>
+                  <div
+                    key={student.id}
+                    className="flex items-center justify-between bg-muted/20 border border-border/10 p-2.5 rounded-xl gap-2"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar seed={student.id} photoUrl={student.photoUrl} name={student.name || "Estudante"} size={36} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-foreground truncate">{student.name || "Sem Nome"}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{student.email || `ID: ${student.id.slice(0, 8)}`}</p>
+                      </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        setIsLinking(true);
+                        try {
+                          await removeConversationStudentAction({
+                            conversationId: selectedConv.id,
+                            studentId: student.id,
+                          });
+                          if (selectedConv.studentId === student.id) {
+                            await associateWhatsAppStudentAction({
+                              conversationId: selectedConv.id,
+                              studentId: null,
+                            });
+                            setSelectedConv({
+                              ...selectedConv,
+                              studentId: null,
+                              studentName: null,
+                              photoUrl: null,
+                            });
+                          }
+                          setAssociatedStudents((prev) => prev.filter((s) => s.id !== student.id));
+                          mutateConvs();
+                          notify.success(`Aluno ${student.name || ""} desvinculado!`);
+                        } catch {
+                          notify.error("Erro técnico ao desvincular.");
+                        } finally {
+                          setIsLinking(false);
+                        }
+                      }}
+                      disabled={isLinking}
+                      className="h-7 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-500/10 px-2.5 rounded-lg font-semibold shrink-0"
+                    >
+                      Remover
+                    </Button>
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Input para Vincular Mais Alunos */}
+            <div className="space-y-2 pt-2">
+              <span className="text-[11px] font-semibold text-muted-foreground">Vincular outro aluno a este contato:</span>
+              <div className="relative">
+                <Input
+                  value={studentSearchQuery}
+                  onChange={(e) => {
+                    setStudentSearchQuery(e.target.value);
+                    handleSearchStudents(e.target.value);
+                  }}
+                  placeholder="Buscar aluno por nome para associar..."
+                  className="h-9 text-xs rounded-xl focus-visible:ring-primary/20 bg-muted/20 border-border/30"
+                />
+                {isSearchingStudents && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              
+              {searchResults.length > 0 && (
+                <div className="border border-border/20 bg-card rounded-xl max-h-36 overflow-y-auto divide-y divide-border/10 shadow-lg select-none">
+                  {searchResults.map((student) => (
+                    <button
+                      key={student.id}
+                      type="button"
+                      onClick={async () => {
+                        setIsLinking(true);
+                        try {
+                          await addConversationStudentAction({
+                            conversationId: selectedConv.id,
+                            studentId: student.id,
+                          });
+                          await associateWhatsAppStudentAction({
+                            conversationId: selectedConv.id,
+                            studentId: student.id,
+                          });
+                          if (!associatedStudents.some((s) => s.id === student.id)) {
+                            setAssociatedStudents((prev) => [...prev, student]);
+                          }
+                          setSelectedConv({
+                            ...selectedConv,
+                            studentId: student.id,
+                            studentName: student.name,
+                            photoUrl: student.photoUrl,
+                          });
+                          mutateConvs();
+                          setStudentSearchQuery("");
+                          setSearchResults([]);
+                          notify.success(`Aluno ${student.name} vinculado com sucesso!`);
+                        } catch {
+                          notify.error("Erro técnico ao vincular.");
+                        } finally {
+                          setIsLinking(false);
+                        }
+                      }}
+                      disabled={isLinking}
+                      className="w-full flex items-center gap-2 p-2 text-left hover:bg-muted/50 transition-colors"
+                    >
+                      <Avatar seed={student.id} photoUrl={student.photoUrl} name={student.name} size={28} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{student.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{student.email}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Labels List & custom label creation */}

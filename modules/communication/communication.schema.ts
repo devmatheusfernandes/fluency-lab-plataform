@@ -92,5 +92,17 @@ export const sendAdminEmailSchema = z.object({
 export type SendAdminEmailValues = z.input<typeof sendAdminEmailSchema>;
 export type EmailMessage = typeof emailsTable.$inferSelect;
 
+export const whatsappConversationStudentsTable = pgTable("whatsapp_conversation_students", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id")
+    .notNull()
+    .references(() => whatsappConversationsTable.id, { onDelete: "cascade" }),
+  studentId: text("student_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+
 
 

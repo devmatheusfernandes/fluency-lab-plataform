@@ -16,7 +16,8 @@ import {
   getWhatsAppQuickRepliesAction,
   createWhatsAppQuickReplyAction,
   deleteWhatsAppQuickReplyAction,
-  sendWhatsAppMediaAction
+  sendWhatsAppMediaAction,
+  getWhatsAppAllowedTemplatesAction,
 } from "@/modules/communication/communication.actions";
 import { searchStudentsAction } from "@/modules/user/user.actions";
 import { WhatsAppConversation, WhatsAppMessage, WhatsAppLabel, WhatsAppTemplate } from "@/modules/communication/communication.types";
@@ -47,7 +48,8 @@ import {
   Trash2,
   Sparkles,
   MessageSquare,
-  Paperclip
+  Paperclip,
+  Check
 } from "lucide-react";
 import { format } from "date-fns";
 import { notify } from "@/components/ui/toaster";
@@ -177,6 +179,7 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
   const [templateParams, setTemplateParams] = useState<string[]>([]);
   const [isSendingTemplate, setIsSendingTemplate] = useState(false);
+  const [isConfirmTemplateOpen, setIsConfirmTemplateOpen] = useState(false);
 
   // Quick replies CRUD state
   const [qrShortcut, setQrShortcut] = useState("");
@@ -223,6 +226,15 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
     async () => {
       const result = await getWhatsAppTemplatesAction();
       return (result?.data as unknown as WhatsAppTemplate[]) || [];
+    },
+    { revalidateOnFocus: false }
+  );
+
+  const { data: allowedTemplatesList } = useSWR(
+    "whatsapp-allowed-templates-chat",
+    async () => {
+      const res = await getWhatsAppAllowedTemplatesAction();
+      return res?.data?.success && Array.isArray(res.data.data) ? res.data.data : WHATSAPP_TEMPLATES_WHITELIST;
     },
     { revalidateOnFocus: false }
   );
@@ -372,22 +384,54 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
     e.preventDefault();
     if (!messageText.trim() || !selectedConv || isSending) return;
 
+    const textToSend = messageText.trim();
+    setMessageText("");
     setIsSending(true);
+
+    const tempId = `temp-${Date.now()}`;
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const optimisticMsg: any = {
+      id: tempId,
+      conversationId: selectedConv.id,
+      content: textToSend,
+      type: "text",
+      direction: "outbound",
+      status: "sent",
+      metadata: null,
+      createdAt: new Date(),
+    };
+
+    // Optimistic UI updates
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mutateMessages((prev: any) => [...(prev || []), optimisticMsg], false);
+    mutateConvs(
+      (prev) =>
+        prev?.map((c) =>
+          c.id === selectedConv.id
+            ? { ...c, lastMessageContent: textToSend, lastMessageAt: new Date() }
+            : c
+        ),
+      false
+    );
+
     try {
       const result = await sendWhatsAppTextMessageAction({
         to: selectedConv.waId,
-        text: messageText,
+        text: textToSend,
       });
 
       if (result?.data) {
-        setMessageText("");
         mutateMessages();
         mutateConvs();
       } else {
         notify.error("Erro ao enviar mensagem. Verifique se está dentro da janela de 24h.");
+        mutateMessages();
+        mutateConvs();
       }
     } catch {
       notify.error("Erro técnico ao enviar mensagem.");
+      mutateMessages();
+      mutateConvs();
     } finally {
       setIsSending(false);
     }
@@ -421,12 +465,27 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
     return new Set(matches).size;
   };
 
-  const handleSendTemplate = async (e: React.FormEvent) => {
+  const getInterpolatedTemplateText = () => {
+    if (!selectedTemplate) return "";
+    const bodyComp = selectedTemplate.components.find((c) => c.type === "BODY" || (c.type as unknown as string) === "body");
+    let text = bodyComp?.text || "";
+    templateParams.forEach((param, idx) => {
+      text = text.replace(new RegExp(`\\{\\{${idx + 1}\\}\\}`, "g"), param || `{{${idx + 1}}}`);
+    });
+    return text;
+  };
+
+  const handleOpenTemplateConfirmation = (e: React.FormEvent) => {
     e.preventDefault();
+    const phone = selectedConv ? selectedConv.waId : newChatPhone;
+    if (!phone || !selectedTemplate) return;
+    setIsConfirmTemplateOpen(true);
+  };
+
+  const handleSendTemplateConfirmed = async () => {
     const phone = selectedConv ? selectedConv.waId : newChatPhone;
     if (!phone || !selectedTemplate || isSendingTemplate) return;
 
-    setIsSendingTemplate(false);
     const componentsToSend = [
       {
         type: "body",
@@ -444,6 +503,7 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
 
       if (result?.data?.messages?.[0]?.id) {
         notify.success("Template enviado com sucesso!");
+        setIsConfirmTemplateOpen(false);
         setIsNewChatOpen(false);
         setIsSendTemplateOpen(false);
         setSelectedTemplate(null);
@@ -455,7 +515,6 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
         if (selectedConv) {
           mutateMessages();
         } else {
-          // If initiating a new chat, try to auto-select it
           setTimeout(() => {
             mutateConvs().then((updatedList) => {
               const match = updatedList?.find((c) => c.waId === phone);
@@ -542,7 +601,7 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
     : "";
 
   const approvedTemplates = templates?.filter(t => 
-    t.status === "APPROVED" && WHATSAPP_TEMPLATES_WHITELIST.includes(t.name)
+    t.status === "APPROVED" && (allowedTemplatesList || WHATSAPP_TEMPLATES_WHITELIST).includes(t.name)
   ) || [];
 
   return (
@@ -1154,21 +1213,53 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Escolher Template</label>
-              <select
-                onChange={(e) => {
-                  const [name, lang] = e.target.value.split(":");
-                  const t = approvedTemplates.find((temp) => temp.name === name && temp.language === lang);
-                  setSelectedTemplate(t || null);
-                }}
-                className="w-full h-10 px-3 text-xs bg-muted/20 border border-border/30 rounded-xl text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 select-none"
-              >
-                <option value="">Selecione um template aprovado...</option>
-                {approvedTemplates.map((t) => (
-                  <option key={t.id} value={`${t.name}:${t.language}`}>{t.name} ({t.language})</option>
-                ))}
-              </select>
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                Escolher Template ({approvedTemplates.length} disponíveis)
+              </label>
+              {approvedTemplates.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic p-3 border border-dashed rounded-xl text-center">
+                  Nenhum template aprovado habilitado nas configurações.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1">
+                  {approvedTemplates.map((t) => {
+                    const isSelected = selectedTemplate?.id === t.id;
+                    const bodyComp = t.components.find(
+                      (c) => c.type === "BODY" || (c.type as unknown as string) === "body"
+                    );
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => setSelectedTemplate(t)}
+                        className={cn(
+                          "p-3 rounded-xl border transition-all cursor-pointer select-none space-y-1.5",
+                          isSelected
+                            ? "border-[#00a884] bg-[#00a884]/5 dark:bg-[#00a884]/10 shadow-sm"
+                            : "border-border/30 bg-muted/20 hover:bg-muted/40"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-bold text-foreground truncate">
+                            {t.name}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {t.category}
+                            </span>
+                            {isSelected && (
+                              <Check className="w-3.5 h-3.5 text-[#00a884] shrink-0 stroke-[3]" />
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                          {bodyComp?.text}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {selectedTemplate && (
@@ -1207,11 +1298,11 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
             )}
 
             <Button
-              onClick={handleSendTemplate}
+              onClick={handleOpenTemplateConfirmation}
               disabled={!newChatPhone || !selectedTemplate || isSendingTemplate}
-              className="w-full h-10 rounded-xl bg-primary text-primary-foreground font-bold hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-40"
+              className="w-full h-10 rounded-xl bg-[#00a884] hover:bg-[#008f72] text-white font-bold hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-40"
             >
-              {isSendingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : "Iniciar Conversa e Enviar"}
+              Avançar e Revisar Envio
             </Button>
           </VaultBody>
         </VaultContent>
@@ -1227,21 +1318,53 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
             <VaultDescription>Selecione um template homologado na Meta para enviar a esta conversa.</VaultDescription>
           </VaultHeader>
           <VaultBody className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Escolher Template</label>
-              <select
-                onChange={(e) => {
-                  const [name, lang] = e.target.value.split(":");
-                  const t = approvedTemplates.find((temp) => temp.name === name && temp.language === lang);
-                  setSelectedTemplate(t || null);
-                }}
-                className="w-full h-10 px-3 text-xs bg-muted/20 border border-border/30 rounded-xl text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 select-none"
-              >
-                <option value="">Selecione um template aprovado...</option>
-                {approvedTemplates.map((t) => (
-                  <option key={t.id} value={`${t.name}:${t.language}`}>{t.name} ({t.language})</option>
-                ))}
-              </select>
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                Escolher Template ({approvedTemplates.length} disponíveis)
+              </label>
+              {approvedTemplates.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic p-3 border border-dashed rounded-xl text-center">
+                  Nenhum template aprovado habilitado nas configurações.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1">
+                  {approvedTemplates.map((t) => {
+                    const isSelected = selectedTemplate?.id === t.id;
+                    const bodyComp = t.components.find(
+                      (c) => c.type === "BODY" || (c.type as unknown as string) === "body"
+                    );
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => setSelectedTemplate(t)}
+                        className={cn(
+                          "p-3 rounded-xl border transition-all cursor-pointer select-none space-y-1.5",
+                          isSelected
+                            ? "border-[#00a884] bg-[#00a884]/5 dark:bg-[#00a884]/10 shadow-sm"
+                            : "border-border/30 bg-muted/20 hover:bg-muted/40"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-bold text-foreground truncate">
+                            {t.name}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {t.category}
+                            </span>
+                            {isSelected && (
+                              <Check className="w-3.5 h-3.5 text-[#00a884] shrink-0 stroke-[3]" />
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                          {bodyComp?.text}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {selectedTemplate && (
@@ -1280,12 +1403,70 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
             )}
 
             <Button
-              onClick={handleSendTemplate}
+              onClick={handleOpenTemplateConfirmation}
               disabled={!selectedTemplate || isSendingTemplate}
-              className="w-full h-10 rounded-xl bg-primary text-primary-foreground font-bold hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-40"
+              className="w-full h-10 rounded-xl bg-[#00a884] hover:bg-[#008f72] text-white font-bold hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-40"
             >
-              {isSendingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enviar Template"}
+              Avançar e Revisar Envio
             </Button>
+          </VaultBody>
+        </VaultContent>
+      </Vault>
+
+      {/* ── Vault: Confirmação de Envio de Template ─────────────────── */}
+      <Vault open={isConfirmTemplateOpen} onOpenChange={setIsConfirmTemplateOpen}>
+        <VaultContent className="max-w-md">
+          <VaultHeader>
+            <VaultTitle className="flex items-center gap-2 text-foreground">
+              <BookOpen className="w-5 h-5 text-[#00a884]" /> Confirmar Envio de Template
+            </VaultTitle>
+            <VaultDescription>
+              Revise a mensagem final com as variáveis preenchidas antes de disparar pelo WhatsApp.
+            </VaultDescription>
+          </VaultHeader>
+          <VaultBody className="space-y-4">
+            <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/20">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Destinatário:</span>
+              <p className="text-xs font-bold text-foreground">
+                {selectedConv
+                  ? (selectedConv.contactName || selectedConv.studentName ? `${selectedConv.contactName || selectedConv.studentName} (+${selectedConv.waId})` : `+${selectedConv.waId}`)
+                  : `+${newChatPhone}`}
+              </p>
+            </div>
+
+            {selectedTemplate && (
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Visualização da Mensagem:</span>
+                <div className="p-3.5 bg-[#efeae2] dark:bg-[#0b141a] rounded-xl border border-border/20 shadow-inner">
+                  <div className="bg-[#ffffff] dark:bg-[#202c33] p-3.5 rounded-xl border border-border/10 text-xs text-foreground leading-relaxed whitespace-pre-wrap shadow-sm">
+                    {getInterpolatedTemplateText()}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsConfirmTemplateOpen(false)}
+                className="flex-1 h-10 rounded-xl font-semibold"
+              >
+                Voltar e Editar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSendTemplateConfirmed}
+                disabled={isSendingTemplate}
+                className="flex-1 h-10 rounded-xl bg-[#00a884] hover:bg-[#008f72] text-white font-bold"
+              >
+                {isSendingTemplate ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Confirmar e Enviar"
+                )}
+              </Button>
+            </div>
           </VaultBody>
         </VaultContent>
       </Vault>
