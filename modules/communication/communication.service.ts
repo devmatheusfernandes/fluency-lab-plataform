@@ -1309,9 +1309,83 @@ export class CommunicationService {
     }
   }
 
+  async getResendUsage(): Promise<import("./communication.types").ResendUsage | null> {
+    try {
+      const response = await fetch("https://api.resend.com/usage", {
+        headers: {
+          Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        console.error("[CommunicationService.getResendUsage] API Error:", response.statusText);
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("[CommunicationService.getResendUsage] Error:", error);
+      return null;
+    }
+  }
+
   async getEmails() {
+    try {
+      const resendRes = await resend.emails.list();
+      if (resendRes.data && Array.isArray(resendRes.data)) {
+        const items = await Promise.all(
+          resendRes.data.map(async (item) => {
+            const recipientEmail = Array.isArray(item.to) ? item.to[0] : item.to;
+            let studentName: string | null = null;
+
+            if (recipientEmail) {
+              const student = await communicationRepository.findUserByEmail(recipientEmail);
+              if (student) {
+                studentName = student.name;
+              }
+            }
+
+            return {
+              id: item.id,
+              resendId: item.id,
+              from: item.from,
+              to: Array.isArray(item.to) ? item.to : [item.to],
+              subject: item.subject || "(Sem Assunto)",
+              html: null as string | null,
+              text: null as string | null,
+              direction: "outbound" as const,
+              status: item.last_event || "sent",
+              studentId: null,
+              createdAt: new Date(item.created_at),
+              updatedAt: new Date(item.created_at),
+              metadata: { lastEvent: item.last_event },
+              studentName,
+              studentPhotoUrl: null,
+              studentEmail: recipientEmail || null,
+            };
+          })
+        );
+        return items;
+      }
+    } catch (error) {
+      console.error("[CommunicationService.getEmails] Resend API error, falling back to DB:", error);
+    }
     return communicationRepository.getEmailsList();
   }
+
+  async getEmailDetail(id: string) {
+    try {
+      const res = await resend.emails.get(id);
+      if (res.data) {
+        return res.data;
+      }
+    } catch (error) {
+      console.error("[CommunicationService.getEmailDetail] Error:", error);
+    }
+    return null;
+  }
+
 
   async processInboundEmailWebhook(webhookData: { email_id: string; [key: string]: unknown }) {
     try {

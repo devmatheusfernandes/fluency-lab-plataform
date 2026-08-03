@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Plus, Bell, MessageSquare, History, CheckCircle2, Clock, XCircle, RotateCcw, Trash2, Mail, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Plus, Bell, MessageSquare, History, CheckCircle2, Clock, XCircle, RotateCcw, Trash2, Mail, ArrowDownLeft, ArrowUpRight, Activity, Zap, RefreshCw, Users } from "lucide-react";
 import { Header, HeaderAction } from "@/components/layout/header";
 import { useIsMobile } from "@/hooks/ui/use-device";
 import {
@@ -15,14 +15,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { WhatsAppTemplate, WhatsAppMetaComponent } from "@/modules/communication/communication.types";
+import { WhatsAppTemplate, WhatsAppMetaComponent, ResendUsage } from "@/modules/communication/communication.types";
 import { NotificationHistoryItem } from "@/modules/notification/notification.types";
 import { SendNotificationVault } from "./SendNotificationVault";
 import { CreateWhatsAppTemplateVault } from "./CreateWhatsAppTemplateVault";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { getWhatsAppTemplatesAction, deleteWhatsAppTemplateAction, getEmailsAction } from "@/modules/communication/communication.actions";
+import { getWhatsAppTemplatesAction, deleteWhatsAppTemplateAction, getEmailsAction, getResendUsageAction, getEmailDetailAction } from "@/modules/communication/communication.actions";
 import { notify } from "@/components/ui/toaster";
 import { SendWhatsAppMessageVault } from "@/app/[locale]/hub/admin/communication/_components/SendWhatsAppMessageVault";
 import { SendEmailVault } from "./SendEmailVault";
@@ -46,6 +46,7 @@ interface CommunicationDashboardProps {
   initialTemplates: WhatsAppTemplate[];
   initialHistory: NotificationHistoryItem[];
   initialEmails: EmailMessageDetail[];
+  initialResendUsage?: ResendUsage | null;
   user: {
     name: string | null;
     email: string | null;
@@ -54,7 +55,7 @@ interface CommunicationDashboardProps {
   };
 }
 
-export function CommunicationDashboard({ initialTemplates, initialHistory, initialEmails, user }: CommunicationDashboardProps) {
+export function CommunicationDashboard({ initialTemplates, initialHistory, initialEmails, initialResendUsage, user }: CommunicationDashboardProps) {
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
   const [isWabaOpen, setIsWabaOpen] = useState(false);
   const [isSendWaOpen, setIsSendWaOpen] = useState(false);
@@ -62,12 +63,16 @@ export function CommunicationDashboard({ initialTemplates, initialHistory, initi
   const [showDeleteVault, setShowDeleteVault] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
-  // Email States
+  // Email & Resend Usage States
   const [emails, setEmails] = useState<EmailMessageDetail[]>(initialEmails);
+  const [resendUsage, setResendUsage] = useState<ResendUsage | null>(initialResendUsage ?? null);
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
+  const [isLoadingBody, setIsLoadingBody] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isEmailDetailsOpen, setIsEmailDetailsOpen] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<EmailMessageDetail | null>(null);
   const [replyToEmail, setReplyToEmail] = useState<{ email: string; subject: string } | null>(null);
+
 
   // Pagination for notifications
   const [currentPage, setCurrentPage] = useState(1);
@@ -106,12 +111,61 @@ export function CommunicationDashboard({ initialTemplates, initialHistory, initi
 
   const handleRefreshEmails = async () => {
     try {
-      const result = await getEmailsAction();
-      if (result?.data) {
-        setEmails(result.data as EmailMessageDetail[]);
+      const [emailsRes, usageRes] = await Promise.all([
+        getEmailsAction(),
+        getResendUsageAction(),
+      ]);
+      if (emailsRes?.data) {
+        setEmails(emailsRes.data as EmailMessageDetail[]);
+      }
+      if (usageRes?.data) {
+        setResendUsage(usageRes.data);
       }
     } catch {
-      console.error("Erro ao atualizar e-mails");
+      console.error("Erro ao atualizar e-mails ou métricas");
+    }
+  };
+
+  const handleRefreshUsage = async () => {
+    setIsLoadingUsage(true);
+    try {
+      const result = await getResendUsageAction();
+      if (result?.data) {
+        setResendUsage(result.data);
+        notify.success("Métricas da API do Resend atualizadas!");
+      }
+    } catch {
+      notify.error("Erro ao atualizar métricas da API");
+    } finally {
+      setIsLoadingUsage(false);
+    }
+  };
+
+  const handleSelectEmail = async (item: EmailMessageDetail) => {
+    setSelectedEmail(item);
+    setIsEmailDetailsOpen(true);
+
+    if (!item.html && item.id) {
+      setIsLoadingBody(true);
+      try {
+        const res = await getEmailDetailAction({ id: item.id });
+        if (res?.data) {
+          const detail = res.data as { html?: string | null; text?: string | null };
+          setSelectedEmail((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  html: detail.html || null,
+                  text: detail.text || null,
+                }
+              : prev
+          );
+        }
+      } catch (err) {
+        console.error("Erro ao buscar detalhes do e-mail:", err);
+      } finally {
+        setIsLoadingBody(false);
+      }
     }
   };
 
@@ -123,6 +177,7 @@ export function CommunicationDashboard({ initialTemplates, initialHistory, initi
     });
     return () => unsubscribe();
   }, []);
+
 
 
   const handleDeleteTemplate = (name: string) => {
@@ -387,19 +442,147 @@ export function CommunicationDashboard({ initialTemplates, initialHistory, initi
         </TabsContent>
 
         <TabsContent value="emails" className="space-y-4">
+          {/* Cards de Métricas da Usage API do Resend */}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Card 1: Cota Mensal */}
+            <div className="card p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Cota Mensal</span>
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[9px] font-bold">
+                  Usage API Beta
+                </Badge>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-bold">
+                  {resendUsage?.emails?.monthly?.used ?? (emails.length > 0 ? emails.length : 0)}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    / {resendUsage?.emails?.monthly?.limit ? resendUsage.emails.monthly.limit.toLocaleString() : "3.000"}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
+                  <div
+                    className="bg-primary h-full transition-all duration-300"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(
+                          ((resendUsage?.emails?.monthly?.used ?? emails.length) /
+                            (resendUsage?.emails?.monthly?.limit || 3000)) *
+                            100
+                        )
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                {resendUsage?.emails?.monthly?.limit
+                  ? `${Math.round(
+                      ((resendUsage?.emails?.monthly?.used ?? 0) /
+                        resendUsage.emails.monthly.limit) *
+                        100
+                    )}% do limite do plano utilizado`
+                  : "Monitoramento em tempo real via Resend API"}
+              </p>
+            </div>
+
+            {/* Card 2: Janela de 24h */}
+            <div className="card p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground font-sans">Envios (24h)</span>
+                <Activity className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-bold">
+                  {resendUsage?.emails?.daily?.used ?? 0}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    {resendUsage?.emails?.daily?.limit ? `/ ${resendUsage.emails.daily.limit}` : "envios"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
+                  <span>Enviados: <strong className="text-foreground">{resendUsage?.emails?.daily?.sent ?? 0}</strong></span>
+                  <span>Recebidos: <strong className="text-foreground">{resendUsage?.emails?.daily?.received ?? 0}</strong></span>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Janela móvel de 24 horas
+              </p>
+            </div>
+
+            {/* Card 3: Rate Limit */}
+            <div className="card p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Rate Limit da API</span>
+                <Zap className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-bold">
+                  {resendUsage?.rate_limit?.limit ?? 10}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">req / {resendUsage?.rate_limit?.duration ?? "1000ms"}</span>
+                </div>
+                <div className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Limite elevado via suporte (10 req/s)
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Capacidade de requisições por segundo
+              </p>
+            </div>
+
+            {/* Card 4: Contatos & Atualização */}
+            <div className="card p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Base de Contatos</span>
+                <Users className="w-4 h-4 text-blue-500" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-bold">
+                  {resendUsage?.contacts?.used ?? 0}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    / {resendUsage?.contacts?.limit ? resendUsage.contacts.limit.toLocaleString() : "3.000"}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={handleRefreshUsage}
+                    disabled={isLoadingUsage}
+                    className="w-full text-[11px] gap-1"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingUsage ? "animate-spin" : ""}`} />
+                    Atualizar Métricas
+                  </Button>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Audiências & Contatos cadastrados no Resend
+              </p>
+            </div>
+          </div>
+
+          {/* Cabeçalho da Lista */}
+          <div className="flex items-center justify-between pt-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Mail className="w-4 h-4 text-primary" />
+              Histórico de E-mails Enviados & Recebidos
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              Total: <strong>{emails.length}</strong> e-mails registrados
+            </span>
+          </div>
+
+          {/* Lista de E-mails */}
           <div className="grid gap-3">
             {emails.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground card">
                 Nenhum e-mail enviado ou recebido recentemente.
               </div>
             ) : (
               paginatedEmails.map((item) => (
                 <div
                   key={item.id}
-                  onClick={() => {
-                    setSelectedEmail(item);
-                    setIsEmailDetailsOpen(true);
-                  }}
+                  onClick={() => handleSelectEmail(item)}
                   className="card p-4 flex items-start gap-4 cursor-pointer hover:bg-muted/30 transition-colors"
                 >
                   <div className="p-2 bg-primary/10 rounded-full shrink-0">
@@ -484,6 +667,7 @@ export function CommunicationDashboard({ initialTemplates, initialHistory, initi
         open={isEmailDetailsOpen}
         onOpenChange={setIsEmailDetailsOpen}
         email={selectedEmail}
+        isLoadingBody={isLoadingBody}
         onReply={(emailAddress, subject) => {
           setReplyToEmail({ email: emailAddress, subject });
           setIsEmailOpen(true);

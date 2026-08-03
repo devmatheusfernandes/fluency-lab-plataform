@@ -4,23 +4,27 @@ import { communicationService } from "@/modules/communication/communication.serv
 import { notificationService } from "@/modules/notification/notification.service";
 import { CommunicationDashboard } from "./_components/CommunicationDashboard";
 
+import { EmailMessageDetail } from "./_components/EmailDetailsVault";
+
 export default async function AdminCommunicationPage() {
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") {
     redirect("/signin");
   }
 
-  const [templates, history, emails] = await Promise.all([
+  const [templates, history, emails, resendUsage] = await Promise.all([
     communicationService.getWhatsAppTemplates(),
     notificationService.getGlobalHistory(),
     communicationService.getEmails(),
+    communicationService.getResendUsage(),
   ]);
 
   return (
     <CommunicationDashboard
       initialTemplates={templates}
       initialHistory={history}
-      initialEmails={emails}
+      initialEmails={emails as EmailMessageDetail[]}
+      initialResendUsage={resendUsage}
       user={user}
     />
   );

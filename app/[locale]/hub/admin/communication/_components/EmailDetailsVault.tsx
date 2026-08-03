@@ -13,7 +13,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { Mail, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Mail, ArrowDownLeft, ArrowUpRight, Loader2 } from "lucide-react";
 
 import { EmailMessage } from "@/modules/communication/communication.types";
 
@@ -24,10 +24,12 @@ interface EmailDetailsVaultProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   email: EmailMessageDetail | null;
+  isLoadingBody?: boolean;
   onReply?: (emailAddress: string, subject: string) => void;
 }
 
-export function EmailDetailsVault({ open, onOpenChange, email, onReply }: EmailDetailsVaultProps) {
+export function EmailDetailsVault({ open, onOpenChange, email, isLoadingBody = false, onReply }: EmailDetailsVaultProps) {
+
   if (!email) return null;
 
   const dateStr = format(new Date(email.createdAt), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR });
@@ -88,15 +90,22 @@ export function EmailDetailsVault({ open, onOpenChange, email, onReply }: EmailD
 
           {/* Email Body encapsulated inside an Iframe for styling protection */}
           <div className="flex flex-col flex-1 min-h-[300px]">
-            <iframe
-              srcDoc={
-                email.html ||
-                `<!DOCTYPE html><html><head><style>body { font-family: sans-serif; line-height: 1.6; color: #333; margin: 20px; white-space: pre-wrap; }</style></head><body>${email.text || "(Sem conteúdo)"}</body></html>`
-              }
-              className="w-full flex-1 min-h-[350px] border border-border rounded-lg bg-white shadow-none"
-              sandbox="allow-same-origin"
-              title="Visualização do E-mail"
-            />
+            {isLoadingBody ? (
+              <div className="flex flex-col items-center justify-center min-h-[350px] border border-border rounded-lg bg-muted/20">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mb-2" />
+                <span className="text-xs text-muted-foreground">Carregando conteúdo do e-mail via Resend...</span>
+              </div>
+            ) : (
+              <iframe
+                srcDoc={
+                  email.html ||
+                  `<!DOCTYPE html><html><head><style>body { font-family: sans-serif; line-height: 1.6; color: #333; margin: 20px; white-space: pre-wrap; }</style></head><body>${email.text || "(Sem conteúdo retornado)"}</body></html>`
+                }
+                className="w-full flex-1 min-h-[350px] border border-border rounded-lg bg-white shadow-none"
+                sandbox="allow-same-origin"
+                title="Visualização do E-mail"
+              />
+            )}
           </div>
         </VaultBody>
 

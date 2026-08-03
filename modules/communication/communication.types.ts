@@ -156,3 +156,29 @@ export interface EmailMessage {
   studentEmail?: string | null;
 }
 
+export interface ResendUsageQuota {
+  used: number;
+  limit: number | null;
+  sent?: number;
+  received?: number;
+  resets_at?: string;
+}
+
+export interface ResendUsage {
+  object: string;
+  generated_at: string;
+  emails?: {
+    daily?: ResendUsageQuota;
+    monthly?: ResendUsageQuota;
+  };
+  contacts?: {
+    used: number;
+    limit: number | null;
+  };
+  rate_limit?: {
+    limit: number;
+    duration: string;
+  };
+}
+
+

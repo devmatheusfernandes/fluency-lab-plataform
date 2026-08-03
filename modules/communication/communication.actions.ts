@@ -181,6 +181,20 @@ export const getEmailsAction = managerAction
     return await communicationService.getEmails();
   });
 
+export const getResendUsageAction = managerAction
+  .metadata({ name: "getResendUsage" })
+  .action(async () => {
+    return await communicationService.getResendUsage();
+  });
+
+export const getEmailDetailAction = managerAction
+  .metadata({ name: "getEmailDetail" })
+  .schema(z.object({ id: z.string() }))
+  .action(async ({ parsedInput }) => {
+    return await communicationService.getEmailDetail(parsedInput.id);
+  });
+
+
 export const getWhatsAppUnreadCountAction = managerAction
   .metadata({ name: "getWhatsAppUnreadCount" })
   .action(async () => {
