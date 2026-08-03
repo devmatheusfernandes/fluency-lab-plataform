@@ -93,10 +93,10 @@ const customCache: RuntimeCaching[] = [
       ],
     }),
   },
-  // 6. Next.js Static JS (CacheFirst)
+  // 6. Next.js Static JS (StaleWhileRevalidate to prevent stale action hashes across deployments)
   {
     matcher: /\/_next\/static.+\.js$/i,
-    handler: new CacheFirst({
+    handler: new StaleWhileRevalidate({
       cacheName: "next-static-js-assets",
       plugins: [
         new ExpirationPlugin({

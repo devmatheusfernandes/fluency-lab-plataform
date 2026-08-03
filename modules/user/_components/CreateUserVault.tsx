@@ -138,6 +138,23 @@ export function CreateUserVault({ open, onOpenChange }: CreateUserVaultProps) {
       }
     } catch (error) {
       console.error("[CreateUserVault] error:", error);
+      const isActionSkew =
+        String(error).includes("UnrecognizedActionError") ||
+        String(error).includes("was not found on the server") ||
+        String(error).includes("Server Action");
+
+      if (isActionSkew) {
+        notify.error(
+          "Nova versão disponível",
+          "A plataforma foi atualizada em produção. A página será recarregada para sincronizar a nova versão...",
+          toastId
+        );
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+        return;
+      }
+
       notify.error(
         t("toasts.errorTitle"),
         t("toasts.errorDescription"),
