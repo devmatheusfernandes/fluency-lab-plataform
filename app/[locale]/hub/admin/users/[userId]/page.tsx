@@ -28,13 +28,16 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
     return notFound();
   }
 
-  const [contracts, subscriptions, teacherClasses, callHistory] = await Promise.all([
+  const [contracts, subscriptions, teacherClasses, callHistory, teacherStudents] = await Promise.all([
     contractService.getMyContracts(userId),
     billingService.getSubscriptionsByStudent(userId),
     targetUser.role === "teacher"
       ? schedulingService.getTeacherCompletedClasses(userId, startOfMonth(new Date()), endOfMonth(new Date()))
       : Promise.resolve([]),
     callService.getStudentCallHistory(userId),
+    targetUser.role === "teacher"
+      ? schedulingService.getTeacherStudents(userId)
+      : Promise.resolve([]),
   ]);
 
   const activeSub = subscriptions.find(s => s.status === "active" || s.status === "pending_fee");
@@ -56,6 +59,7 @@ export default async function UserDetailsPage({ params }: UserDetailsPageProps) 
       activeSubscription={activeSub}
       installments={installments}
       teacherClasses={teacherClasses}
+      teacherStudents={teacherStudents}
       earningsSummary={earningsSummary}
       callHistory={callHistory}
       basePath="/hub/admin/users"

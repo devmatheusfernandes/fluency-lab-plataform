@@ -28,6 +28,7 @@ import { VideoCallsTab } from "./userDetails/VideoCallsTab";
 import { ActionsTab } from "./userDetails/ActionsTab";
 import { CertificateTab } from "./userDetails/CertificateTab";
 import { StudentPlanTab } from "./userDetails/StudentPlanTab";
+import { TeacherStudentsTab, type TeacherStudentItem } from "./userDetails/TeacherStudentsTab";
 import { Header } from "@/components/layout/header";
 import type { CallSession } from "../../call/call.schema";
 
@@ -46,6 +47,7 @@ interface UserDetailsClientProps {
   installments?: Installment[];
   subscriptions?: SubscriptionWithPlan[];
   teacherClasses?: SlotInstanceWithDetails[];
+  teacherStudents?: TeacherStudentItem[];
   earningsSummary?: { count: number; total: number };
   contracts?: ContractWithTemplate[];
   callHistory?: CallSession[];
@@ -60,6 +62,7 @@ export function UserDetailsClient({
   installments = [],
   subscriptions = [],
   teacherClasses = [],
+  teacherStudents = [],
   earningsSummary = { count: 0, total: 0 },
   contracts = [],
   callHistory = [],
@@ -306,6 +309,15 @@ export function UserDetailsClient({
               </TabsTrigger>
             )}
 
+            {user.role === "teacher" && (
+              <TabsTrigger
+                value="students"
+                className="shrink-0 data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:text-primary! data-[state=active]:border-none! focus-visible:ring-0 focus-visible:ring-offset-0 py-4"
+              >
+                {t("students")}
+              </TabsTrigger>
+            )}
+
             {user.role === "student" && (
               <TabsTrigger
                 value="curriculum"
@@ -408,6 +420,12 @@ export function UserDetailsClient({
         {user.role === "teacher" && (
           <TabsContent value="schedule" className="mt-4">
             <TeacherScheduleTab teacherId={user.id} />
+          </TabsContent>
+        )}
+
+        {user.role === "teacher" && (
+          <TabsContent value="students" className="mt-4">
+            <TeacherStudentsTab students={teacherStudents} basePath={basePath} />
           </TabsContent>
         )}
 
