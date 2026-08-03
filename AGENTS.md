@@ -189,6 +189,7 @@ Cada skill é um manual especializado. **Use a skill correspondente ao tipo de a
 | `/spec` | Criar especificação técnica detalhada (DDD + Security) | `.agents/workflows/spec.md` |
 | `/break` | Quebrar feature grande em subtarefas atômicas | `.agents/workflows/break.md` |
 | `/test` | Gerar testes unitários para Services e Actions | `.agents/workflows/test.md` |
+| `/dev-cycle` | Ciclo completo: criar feature → testar no Preview → merge → atualizar banco de prod | `.agents/workflows/dev-cycle.md` |
 
 ---
 

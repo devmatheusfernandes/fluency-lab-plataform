@@ -1,6 +1,6 @@
 import { placementRepository } from "./placement.repository";
 import { userService } from "../user/user.service";
-import { calculateElo, mapEloToCEFR } from "@/lib/adaptive-scoring";
+import { calculateElo, mapEloToCEFR, cefrToInitialDifficulty } from "@/lib/adaptive-scoring";
 import { Question, PlacementTest } from "./placement.schema";
 import { curriculumService } from "../curriculum/curriculum.service";
 import { aiService } from "../ai/ai.service";
@@ -9,6 +9,51 @@ import { CEFRLevel, LearningItemMetadata } from "../curriculum/curriculum.types"
 import { questionsTable } from "./placement.schema";
 
 const PLACEMENT_TEST_LESSON_ID = "00000000-0000-0000-0000-000000000000"; // Mock ID for diagnostic records
+
+function sanitizeQuestionForStudent(question: Question): Question {
+  const sanitized = { ...question };
+  
+  // 1. Remove correctOptionId
+  sanitized.correctOptionId = "";
+  
+  // 2. Remove audioScript
+  sanitized.audioScript = null;
+  
+  // 3. Clear options for non-multiple-choice/non-grammar/non-context types
+  if (sanitized.type === "writing" || sanitized.type === "unscramble") {
+    sanitized.options = [];
+  }
+
+  // 4. Remove context for unscramble questions (since it contains the correct sentence)
+  if (sanitized.type === "unscramble") {
+    sanitized.context = "";
+  }
+  
+  // 5. Sanitize metadata
+  if (sanitized.metadata) {
+    const metadata = { ...sanitized.metadata };
+    
+    // Remove gapFillData.correctAnswer
+    if (metadata.gapFillData) {
+      metadata.gapFillData = {
+        ...metadata.gapFillData,
+        correctAnswer: "",
+      };
+    }
+    
+    // Remove unscrambleData.correctOrder
+    if (metadata.unscrambleData) {
+      metadata.unscrambleData = {
+        ...metadata.unscrambleData,
+        correctOrder: [],
+      };
+    }
+    
+    sanitized.metadata = metadata;
+  }
+  
+  return sanitized;
+}
 
 export const placementService = {
   /**
@@ -88,7 +133,7 @@ export const placementService = {
       }
     }
 
-    return question ?? null;
+    return question ? sanitizeQuestionForStudent(question) : null;
   },
 
   /**
@@ -103,6 +148,7 @@ export const placementService = {
     currentElo: number;
     finalElo?: number;
     nextQuestion: Question | null;
+    correctAnswer: string;
   }> {
     // 1. Verify user owns this test
     // We don't have languageId in the answer payload, but the test table has it.
@@ -190,7 +236,16 @@ export const placementService = {
       }
     }
 
-    // 7. Check if test should finish (25 total questions, meaning 24 were answered before this one = 25 now)
+    // 7. Calculate correct answer for feedback before returning
+    let correctAnswer = "";
+    if (question.options) {
+      const options = question.options as { text: string; id: string }[];
+      const correct = options.find((o) => o.id === question.correctOptionId);
+      correctAnswer = correct ? correct.text : (question.context || "");
+    } else {
+      correctAnswer = question.context || "";
+    }
+
     const totalAnsweredNow = studentQuestionsAnswered + 1;
     if (totalAnsweredNow >= 25) {
       // Finish the test
@@ -208,6 +263,7 @@ export const placementService = {
         currentElo: newStudentScore,
         finalElo: newStudentScore,
         nextQuestion: null,
+        correctAnswer,
       };
     }
 
@@ -219,6 +275,7 @@ export const placementService = {
       isCorrect,
       currentElo: newStudentScore,
       nextQuestion,
+      correctAnswer,
     };
   },
 
@@ -266,7 +323,7 @@ export const placementService = {
         const [created] = await placementRepository.createQuestion({
           languageId,
           skill: skill,
-          difficultyLevel: 1000,
+          difficultyLevel: cefrToInitialDifficulty(cefrLevel),
           cefrLevel: cefrLevel,
           content: aiQuestion.content,
           context: aiQuestion.context,
@@ -389,7 +446,7 @@ export const placementService = {
               correctOptionId: "gap",
               options: [{ id: "gap", text: correctAnswer }],
               cefrLevel: "A1",
-              difficultyLevel: 1000,
+              difficultyLevel: cefrToInitialDifficulty("A1"),
               sourceMediaId: mediaRecord.id,
               metadata: {
                 audioRange: { start: s.start, end: s.end },
@@ -437,7 +494,7 @@ export const placementService = {
             correctOptionId: "unscramble",
             options: [{ id: "unscramble", text: example.text }],
             cefrLevel: meta.level || "A1",
-            difficultyLevel: 1000,
+            difficultyLevel: cefrToInitialDifficulty(meta.level || "A1"),
             learningItemId: item.id,
             metadata: {
               unscrambleData: { words: shuffledWords, correctOrder }
@@ -476,6 +533,7 @@ export const placementService = {
 
             for (const aiQ of aiQuestions) {
               const originalItem = itemBatch.find(it => it.lemma === aiQ.learningItemId);
+              const itemCefrLevel = ((originalItem?.metadata as LearningItemMetadata)?.level as string) || "A1";
               questions.push({
                 languageId,
                 type: type as 'multiple_choice' | 'unscramble' | 'audio_comprehension' | 'grammar' | 'context' | 'writing',
@@ -484,8 +542,8 @@ export const placementService = {
                 context: aiQ.context,
                 correctOptionId: aiQ.correct_option_id,
                 options: aiQ.options,
-                cefrLevel: ((originalItem?.metadata as LearningItemMetadata)?.level as string) || "A1",
-                difficultyLevel: 1000,
+                cefrLevel: itemCefrLevel,
+                difficultyLevel: cefrToInitialDifficulty(itemCefrLevel),
                 learningItemId: originalItem?.id,
                 metadata: {
                   aiGenerated: true,

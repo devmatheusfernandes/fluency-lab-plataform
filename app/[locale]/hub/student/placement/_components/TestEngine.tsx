@@ -71,7 +71,7 @@ export function TestEngine({
         return;
       }
 
-      const { isCorrect, isFinished, nextQuestion } = result.data;
+      const { isCorrect, isFinished, nextQuestion, correctAnswer } = result.data;
 
       // Feedback
       if (isCorrect) {
@@ -82,15 +82,7 @@ export function TestEngine({
         if ("vibrate" in navigator) navigator.vibrate([100, 50, 100]);
       }
 
-      // Set feedback state to show result bar
-      let correctAnswer = "";
-      if (!isCorrect && currentQuestion.options) {
-        const options = currentQuestion.options as { text: string, id: string }[];
-        const correct = options.find(o => o.id === currentQuestion.correctOptionId);
-        correctAnswer = correct?.text || currentQuestion.context || "";
-      }
-
-      setFeedback({ isCorrect, correctAnswer });
+      setFeedback({ isCorrect, correctAnswer: correctAnswer || "" });
 
       if (isFinished) {
         const detailedResult = await getTestResultAction({ testId });
@@ -150,19 +142,11 @@ export function TestEngine({
       });
 
       if (result?.data) {
-        const { isFinished, nextQuestion } = result.data;
+        const { isFinished, nextQuestion, correctAnswer } = result.data;
         
         playSound("wrong");
         
-        // Show correct answer in feedback
-        let correctAnswer = "";
-        if (currentQuestion.options) {
-          const options = currentQuestion.options as { text: string, id: string }[];
-          const correct = options.find(o => o.id === currentQuestion.correctOptionId);
-          correctAnswer = correct?.text || currentQuestion.context || "";
-        }
-        
-        setFeedback({ isCorrect: false, correctAnswer });
+        setFeedback({ isCorrect: false, correctAnswer: correctAnswer || "" });
         
         if (isFinished) {
           setNextQuestionData(null);

@@ -40,7 +40,8 @@ export const submitPlacementAnswerAction = protectedAction
         isFinished: true,
         cefrLevel: mapEloToCEFR(result.finalElo),
         finalElo: result.finalElo,
-        isCorrect: result.isCorrect
+        isCorrect: result.isCorrect,
+        correctAnswer: result.correctAnswer
       };
     }
 
@@ -48,7 +49,8 @@ export const submitPlacementAnswerAction = protectedAction
       isFinished: false,
       isCorrect: result.isCorrect,
       currentElo: result.currentElo,
-      nextQuestion: result.nextQuestion
+      nextQuestion: result.nextQuestion,
+      correctAnswer: result.correctAnswer
     };
   });
 
