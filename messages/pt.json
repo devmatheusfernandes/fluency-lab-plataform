@@ -1751,7 +1751,10 @@
       "title": "Vamos oficializar sua jornada.",
       "signedSuccessDesc": "Sua assinatura foi processada e registrada com sucesso.",
       "downloadPdf": "Baixar contrato (PDF)",
-      "loadError": "Erro ao carregar contrato. Entre em contato com o suporte."
+      "loadError": "Erro ao carregar contrato. Entre em contato com o suporte.",
+      "summaryTab": "Resumo dos Termos",
+      "fullTab": "Contrato Completo",
+      "summaryTitle": "Principais regras do seu contrato"
     },
     "finish": {
       "appDesc": "Instale nosso PWA para receber notificações de aulas e praticar em qualquer lugar.",

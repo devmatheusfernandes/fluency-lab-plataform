@@ -1751,7 +1751,10 @@
       "title": "Let's formalize your journey.",
       "signedSuccessDesc": "Your signature was processed and registered successfully.",
       "downloadPdf": "Download contract (PDF)",
-      "loadError": "Error loading contract. Please contact support."
+      "loadError": "Error loading contract. Please contact support.",
+      "summaryTab": "Summary of Terms",
+      "fullTab": "Full Contract",
+      "summaryTitle": "Key rules of your contract"
     },
     "finish": {
       "appDesc": "Install our PWA to receive class notifications and practice anywhere.",

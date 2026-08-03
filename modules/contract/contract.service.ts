@@ -1,7 +1,7 @@
 import { contractRepository } from "./contract.repository";
 import { userService } from "../user/user.service";
 import { encrypt, decrypt, generateIntegrityHash } from "@/lib/cryptography";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { adminStorage } from "@/lib/firebase-admin";
 import { injectTemplateData } from "./contract.service.utils";
 import { communicationService } from "../communication/communication.service";
@@ -15,6 +15,39 @@ interface GuardianData {
   name: string;
   taxId: string;
   relationship: string;
+}
+
+function decodeHtml(str: string): string {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+function cleanContractHtml(html: string): string {
+  let text = html;
+  
+  // Replace block tags with newlines
+  text = text.replace(/<\/p>/gi, "\n\n");
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+  text = text.replace(/<\/div>/gi, "\n");
+  text = text.replace(/<\/h[1-6]>/gi, "\n\n");
+  text = text.replace(/<\/li>/gi, "\n");
+  text = text.replace(/<\/tr>/gi, "\n");
+  
+  // Strip all remaining HTML tags
+  text = text.replace(/<[^>]*>?/gm, "");
+  
+  // Collapse multiple newlines
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  // Decode HTML entities
+  text = decodeHtml(text);
+  
+  return text;
 }
 
 /**
@@ -144,7 +177,10 @@ export const contractService = {
       ? `${guardianData.name} (Responsável por ${user.name})` 
       : user.name;
 
-    const verificationUrl = `${env.NEXT_PUBLIC_APP_URL}/verify/${integrityHash}`;
+    const baseUrl = env.NEXT_PUBLIC_APP_URL.endsWith("/")
+      ? env.NEXT_PUBLIC_APP_URL.slice(0, -1)
+      : env.NEXT_PUBLIC_APP_URL;
+    const verificationUrl = `${baseUrl}/verify/${integrityHash}`;
     const pdfBytes = await this.generatePDF(
       instance.template.name, 
       finalContent, 
@@ -380,36 +416,11 @@ export const contractService = {
     const margin = 50;
     const maxWidth = width - (margin * 2);
 
-    // Cabeçalho
-    page.drawText(title.toUpperCase(), {
-      x: margin,
-      y: height - 50,
-      size: 18,
-      font: boldFont,
-    });
-
-    page.drawText(`Contratante: ${signeeName}`, {
-      x: margin,
-      y: height - 70,
-      size: 10,
-      font,
-    });
-
-    page.drawText(`Assinado Digitalmente em: ${new Date().toLocaleString("pt-BR")} (UTC)`, {
-      x: margin,
-      y: height - 82,
-      size: 10,
-      font,
-    });
-
-    // Corpo do documento
-    const paragraphs = content.split("\n");
-    let currentY = height - 120;
     const fontSize = 11;
     const lineHeight = 15;
 
     // Helper to wrap text into lines safely
-    const wrapText = (text: string, maxW: number): string[] => {
+    const wrapText = (text: string, maxW: number, customFontSize = fontSize, customFont = font): string[] => {
       const words = text.trim().split(/\s+/);
       const wrapped: string[] = [];
       let currentLine = "";
@@ -420,7 +431,7 @@ export const contractService = {
           continue;
         }
         const testLine = `${currentLine} ${word}`;
-        const textWidth = font.widthOfTextAtSize(testLine, fontSize);
+        const textWidth = customFont.widthOfTextAtSize(testLine, customFontSize);
         if (textWidth > maxW) {
           wrapped.push(currentLine);
           currentLine = word;
@@ -434,12 +445,47 @@ export const contractService = {
       return wrapped;
     };
 
+    let currentY = height - 50;
+
+    // Cabeçalho: Título (com quebra automática caso seja muito longo)
+    const titleLines = wrapText(title.toUpperCase(), maxWidth, 14, boldFont);
+    for (const titleLine of titleLines) {
+      page.drawText(titleLine, {
+        x: margin,
+        y: currentY,
+        size: 14,
+        font: boldFont,
+      });
+      currentY -= 18;
+    }
+    currentY -= 6; // Spacing
+
+    page.drawText(`Contratante: ${signeeName}`, {
+      x: margin,
+      y: currentY,
+      size: 10,
+      font,
+    });
+    currentY -= 15;
+
+    page.drawText(`Assinado Digitalmente em: ${new Date().toLocaleString("pt-BR")} (UTC)`, {
+      x: margin,
+      y: currentY,
+      size: 10,
+      font,
+    });
+    currentY -= 30; // Gap before body
+
+    // Limpa tags e entidades HTML do conteúdo do contrato para renderização pura
+    const cleanedContent = cleanContractHtml(content);
+    const paragraphs = cleanedContent.split("\n");
+
     for (const paragraph of paragraphs) {
       const trimmed = paragraph.trim();
       if (!trimmed) {
-        // Empty line / Paragraph gap
-        if (currentY < margin + 60) {
-          page = pdfDoc.addPage();
+        // Espaço para quebra de página / margem do rodapé
+        if (currentY < margin + 80) {
+          page = pdfDoc.addPage([width, height]);
           currentY = height - margin;
         }
         currentY -= lineHeight;
@@ -448,8 +494,8 @@ export const contractService = {
 
       const wrappedLines = wrapText(trimmed, maxWidth);
       for (const line of wrappedLines) {
-        if (currentY < margin + 60) { // Espaço para o selo no rodapé
-          page = pdfDoc.addPage();
+        if (currentY < margin + 80) { // Espaço reservado para o selo no rodapé
+          page = pdfDoc.addPage([width, height]);
           currentY = height - margin;
         }
         
@@ -461,32 +507,56 @@ export const contractService = {
         });
         currentY -= lineHeight;
       }
-      // Add a small extra gap between paragraphs
+      // Espaçamento entre parágrafos
       currentY -= 5;
     }
 
-    // Selo de Verificação (Apenas na última página)
+    // Selo de Verificação Digital (Apenas na última página, garantindo que caiba sem overflow)
     if (verification) {
-      const footerY = 60;
+      const footerY = 40;
+      const boxHeight = 75;
+      
+      // Desenha caixa do selo
       page.drawRectangle({
         x: margin - 10,
         y: footerY - 10,
         width: width - (margin * 2) + 20,
-        height: 50,
+        height: boxHeight,
+        color: rgb(0.96, 0.96, 0.98),
         borderWidth: 1,
-        opacity: 0.1,
+        borderColor: rgb(0.85, 0.85, 0.9),
       });
 
-      page.drawText("SELADO DIGITALMENTE — FLUENCY LAB", { x: margin, y: footerY + 25, size: 9, font: boldFont });
-      page.drawText(`Integrity Hash: ${verification.hash.substring(0, 32)}...`, { x: margin, y: footerY + 12, size: 7, font });
-      
-      page.drawText("Verificar autenticidade em:", { x: width - 230, y: footerY + 25, size: 8, font });
-      page.drawText(verification.url, { 
-        x: width - 230, 
-        y: footerY + 12, 
-        size: 8, 
+      page.drawText("SELADO DIGITALMENTE — FLUENCY LAB", { 
+        x: margin, 
+        y: footerY + 50, 
+        size: 8.5, 
         font: boldFont,
+        color: rgb(0.1, 0.1, 0.15) 
       });
+
+      page.drawText(`Integrity Hash: ${verification.hash}`, { 
+        x: margin, 
+        y: footerY + 38, 
+        size: 7, 
+        font,
+        color: rgb(0.3, 0.3, 0.35) 
+      });
+      
+      // Quebra e desenha o link de verificação
+      const verificationLinkText = `Verificar autenticidade em: ${verification.url}`;
+      const wrappedLinkLines = wrapText(verificationLinkText, maxWidth - 20, 7.5, font);
+      let linkY = footerY + 24;
+      for (const line of wrappedLinkLines) {
+        page.drawText(line, {
+          x: margin,
+          y: linkY,
+          size: 7.5,
+          font,
+          color: rgb(0.2, 0.2, 0.25)
+        });
+        linkY -= 10;
+      }
     }
 
     return await pdfDoc.save();
@@ -557,7 +627,8 @@ export const contractService = {
           : (subscription?.plan?.durationMonths ?? 6);
       }
       if (Object.keys(updates).length > 0) {
-        return contractRepository.updateInstance(instance.id, updates);
+        await contractRepository.updateInstance(instance.id, updates);
+        return contractRepository.findPendingOnboardingInstance(userId);
       }
       return instance;
     }
@@ -577,13 +648,15 @@ export const contractService = {
     }
 
     // 3. Create instance with the subscription link and duration
-    return contractRepository.insertInstance({
+    await contractRepository.insertInstance({
       templateId: template.id,
       userId,
       subscriptionId: subscription?.id,
       status: "pending",
       durationMonths,
     });
+
+    return contractRepository.findPendingOnboardingInstance(userId);
   },
 
   async getTeacherActiveContract(teacherId: string) {
