@@ -912,7 +912,8 @@
         "invoiceGeneratedSuccess": "Payment code generated successfully!",
         "regeneratePayment": "Update PIX Code",
         "regenerating": "Generating new code...",
-        "regenerateSuccess": "New PIX code generated successfully!"
+        "regenerateSuccess": "New PIX code generated successfully!",
+        "payNow": "Pay now"
       },
       "ProgressHero": {
         "classes": "Classes",

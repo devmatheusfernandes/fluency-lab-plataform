@@ -912,7 +912,8 @@
         "invoiceGeneratedSuccess": "Código de pagamento gerado com sucesso!",
         "regeneratePayment": "Atualizar Código PIX",
         "regenerating": "Gerando novo código...",
-        "regenerateSuccess": "Novo código PIX gerado com sucesso!"
+        "regenerateSuccess": "Novo código PIX gerado com sucesso!",
+        "payNow": "Quero pagar agora"
       },
       "ProgressHero": {
         "classes": "Aulas",
