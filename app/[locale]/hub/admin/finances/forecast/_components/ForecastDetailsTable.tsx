@@ -129,7 +129,8 @@ export function ForecastDetailsTable({ initialData }: ForecastDetailsTableProps)
         {installments.length === 0 ? (
           renderEmpty(t("emptyTitle"), t("emptyDescription"))
         ) : (
-          <div className="rounded-3xl border border-border/50 bg-card overflow-hidden shadow-sm">
+          <>
+          <div className="hidden md:block rounded-md border border-border/50 bg-card overflow-hidden shadow-sm">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-border/50">
@@ -189,6 +190,60 @@ export function ForecastDetailsTable({ initialData }: ForecastDetailsTableProps)
               onPageChange={installmentsPagination.setCurrentPage}
             />
           </div>
+
+          <div className="block md:hidden space-y-3">
+            {installmentsPagination.paginated.map((tx) => (
+              <div key={tx.id} className="item p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-full bg-primary/10 text-primary shrink-0">
+                      <User size={14} />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-semibold truncate">
+                        {tx.subscription?.student?.name || "N/A"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        {t("installment")} {tx.orderIndex}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-bold text-sm text-emerald-600">
+                    {format.number(tx.amount / 100, { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <BookOpen size={12} className="opacity-70 shrink-0" />
+                    <span className="truncate">{tx.subscription?.plan?.name || "N/A"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Calendar size={12} className="opacity-70" />
+                    <span>
+                      {format.dateTime(new Date(tx.dueDate), {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        timeZone: 'UTC'
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="rounded-md border border-border/50 bg-card overflow-hidden">
+              <PaginationFooter
+                startIndex={installmentsPagination.startIndex}
+                pageSize={ITEMS_PER_PAGE}
+                total={installments.length}
+                totalPages={installmentsPagination.totalPages}
+                currentPage={installmentsPagination.currentPage}
+                onPageChange={installmentsPagination.setCurrentPage}
+              />
+            </div>
+          </div>
+          </>
         )}
       </section>
 
@@ -209,7 +264,8 @@ export function ForecastDetailsTable({ initialData }: ForecastDetailsTableProps)
         {pendingExpenses.length === 0 ? (
           renderEmpty(t("emptyExpensesTitle") || "Nenhuma despesa pendente", t("emptyExpensesDescription") || "Não há despesas com status pendente para este período.")
         ) : (
-          <div className="rounded-3xl border border-border/50 bg-card overflow-hidden shadow-sm">
+          <>
+          <div className="hidden md:block rounded-3xl border border-border/50 bg-card overflow-hidden shadow-sm">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-border/50">
@@ -263,6 +319,54 @@ export function ForecastDetailsTable({ initialData }: ForecastDetailsTableProps)
               onPageChange={expensesPagination.setCurrentPage}
             />
           </div>
+
+          <div className="block md:hidden space-y-3">
+            {expensesPagination.paginated.map((tx) => (
+              <div key={tx.id} className="item p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-full bg-rose-500/10 text-rose-600 shrink-0">
+                      <ReceiptText size={14} />
+                    </div>
+                    <span className="text-sm font-semibold truncate">
+                      {tx.description}
+                    </span>
+                  </div>
+                  <span className="shrink-0 font-bold text-sm text-rose-600">
+                    {format.number(tx.amount / 100, { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2.5 text-xs text-muted-foreground">
+                  <Badge variant="outline" className="font-normal text-[10px] uppercase tracking-wider">
+                    {tx.category}
+                  </Badge>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Calendar size={12} className="opacity-70" />
+                    <span>
+                      {format.dateTime(new Date(tx.date), {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        timeZone: 'UTC'
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="rounded-md border border-border/50 bg-card overflow-hidden">
+              <PaginationFooter
+                startIndex={expensesPagination.startIndex}
+                pageSize={ITEMS_PER_PAGE}
+                total={pendingExpenses.length}
+                totalPages={expensesPagination.totalPages}
+                currentPage={expensesPagination.currentPage}
+                onPageChange={expensesPagination.setCurrentPage}
+              />
+            </div>
+          </div>
+          </>
         )}
       </section>
     </div>

@@ -48,6 +48,7 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
 
   return (
     <>
+      <div className="hidden md:block overflow-auto">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30">
@@ -145,7 +146,92 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
           ))}
         </TableBody>
       </Table>
-      
+      </div>
+
+      <div className="block md:hidden space-y-3 p-3">
+        {paginatedTransactions.map((tx) => (
+          <div
+            key={tx.id}
+            className={cn(
+              "item p-4 space-y-3",
+              tx.source === "manual" && "cursor-pointer"
+            )}
+            onClick={() => {
+              if (tx.source === "manual") {
+                setSelectedTransaction(tx as unknown as Transaction);
+              }
+            }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={cn(
+                  "p-1.5 rounded-full shrink-0",
+                  tx.type === "income" ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                )}>
+                  {tx.type === "income" ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
+                </div>
+                <span className="font-medium text-sm truncate">{tx.description}</span>
+              </div>
+              <span className={cn(
+                "shrink-0 font-semibold text-sm",
+                tx.type === "income" ? "text-emerald-600" : "text-foreground"
+              )}>
+                {tx.type === "income" ? "+" : "-"} {format.number(tx.amount / 100, { style: 'currency', currency: tx.currency || 'BRL' })}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2.5 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Tag size={12} className="opacity-50 shrink-0" />
+                <span className="truncate">{tx.category || "---"}</span>
+                {tx.deductible && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1 border-blue-500/30 text-blue-600 bg-blue-50 shrink-0">
+                    {t("deductible")}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {tx.method === "pix" && <QrCode size={12} className="opacity-70" />}
+                {tx.method === "credit_card" && <CreditCard size={12} className="opacity-70" />}
+                {tx.method === "bank_transfer" && <Building2 size={12} className="opacity-70" />}
+                {tx.method === "cash" && <Banknote size={12} className="opacity-70" />}
+                {(!tx.method || tx.method === "other") && <Wallet size={12} className="opacity-70" />}
+                <span>{tx.method ? t(`methods.${tx.method}`) : "---"}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2.5">
+              <span className="text-xs text-muted-foreground">
+                {format.dateTime(new Date(tx.date), { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              </span>
+              <div className="flex items-center gap-2">
+                {tx.attachmentUrl && (
+                  <a
+                    href={tx.attachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 hover:bg-muted rounded-full transition-colors inline-block text-muted-foreground hover:text-primary"
+                  >
+                    <Paperclip size={14} />
+                  </a>
+                )}
+                <Badge
+                  variant={tx.status === "paid" ? "secondary" : tx.status === "pending" ? "outline" : "destructive"}
+                  className={cn(
+                    "text-[10px] capitalize",
+                    tx.status === "paid" && "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+                    tx.status === "pending" && "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                  )}
+                >
+                  {t(`status.${tx.status}`)}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {totalPages > 1 && (
         <div className="border-t border-border px-6 py-4 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
