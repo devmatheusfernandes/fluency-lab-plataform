@@ -1139,6 +1139,33 @@ export const billingService = {
 
       // Handle Cancellation Fee
       if (type === "cancellation_fee" && subscriptionId) {
+        const sub = await billingRepository.findSubscriptionById(subscriptionId);
+
+        // Idempotency: só registra se ainda estiver aguardando a taxa (evita duplicar em reentregas de webhook)
+        if (sub?.status === "pending_fee" && sub.plan) {
+          try {
+            const { financeService } = await import("../finance/finance.service");
+            const feeAmount = Math.floor(sub.plan.price * 0.5);
+            const studentName = sub.student?.name || "Aluno";
+            const planName = sub.plan.name || "Plano";
+
+            await financeService.createTransaction(null, {
+              type: "income",
+              amount: feeAmount,
+              currency: sub.plan.currency || "BRL",
+              date: new Date(),
+              description: `Taxa de Cancelamento: ${studentName} (${planName})`,
+              category: "Taxa de Cancelamento",
+              method: "pix",
+              deductible: false,
+              status: "paid",
+            });
+            console.log(`[BillingService] Cancellation fee transaction created for subscription ${subscriptionId}: ${feeAmount} cents`);
+          } catch (err) {
+            console.error("[BillingService] Failed to create cancellation fee transaction:", err);
+          }
+        }
+
         const { contractService } = await import("../contract/contract.service");
         const contract = await contractService.getContractBySubscriptionId(subscriptionId);
         if (contract) {
