@@ -37,8 +37,8 @@ interface FinanceDashboardProps {
   initialFiscalConfig: FiscalConfig | null;
   initialMEICapacity: MEICapacity;
   initialGatewayBalances: {
-    stripe: { available: number; pending: number; currency: string };
-    abacate: { available: number; pending: number; blocked: number; currency: string };
+    stripe: { available: number; pending: number; currency: string; status?: "ok" | "not_configured" | "error"; errorMessage?: string };
+    abacate: { available: number; pending: number; blocked: number; currency: string; status?: "ok" | "not_configured" | "sandbox" | "error"; errorMessage?: string };
   };
   currentMonth: number | "all";
   currentYear: number;

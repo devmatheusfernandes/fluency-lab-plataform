@@ -75,6 +75,7 @@
       "emptyTitle": "Nenhuma projeção encontrada",
       "forecastDisclaimer": "Os valores de projeção são baseados em cobranças e despesas pendentes no sistema e podem não refletir o valor final recebido ou pago.",
       "installment": "Parcela",
+      "items": "itens",
       "pendingExpenses": "Despesas Pendentes",
       "pendingRevenue": "Receita Projetada",
       "plan": "Plano",
@@ -100,6 +101,7 @@
     "helpLabel": "Como funciona?",
     "metrics": {
       "expenses": "Despesas Totais",
+      "expensesMonthly": "Despesa Mensal",
       "extraExpenses": "Despesas Avulsas",
       "extraRevenue": "Receitas Avulsas",
       "installments": "Parcelas",
@@ -108,7 +110,9 @@
       "monthlyTotal": "Total do Mês",
       "netProfit": "Lucro Líquido",
       "revenue": "Receita Total",
-      "teacherPayouts": "Pagto Professores"
+      "revenueMonthly": "Receita Mensal",
+      "teacherPayouts": "Pagto Professores",
+      "totalPeriod": "Total do Período"
     },
     "months": {
       "april": "Abril",

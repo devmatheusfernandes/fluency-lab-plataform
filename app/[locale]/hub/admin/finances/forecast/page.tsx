@@ -28,6 +28,9 @@ export default async function AdminForecastPage({
 
   const details = await financeService.getDetailedForecast(year, month);
 
+  const revenueTotal = details.installments.reduce((sum, tx) => sum + tx.amount, 0);
+  const expensesTotal = details.pendingExpenses.reduce((sum, tx) => sum + tx.amount, 0);
+
   return (
     <div className="flex flex-col gap-4">
       <Header
@@ -38,7 +41,14 @@ export default async function AdminForecastPage({
       />
 
       <main className="p-4 md:p-6 flex flex-col">
-        <ForecastFilters currentMonth={month ?? "all"} currentYear={year} />
+        <ForecastFilters
+          currentMonth={month ?? "all"}
+          currentYear={year}
+          revenueTotal={revenueTotal}
+          revenueCount={details.installments.length}
+          expensesTotal={expensesTotal}
+          expensesCount={details.pendingExpenses.length}
+        />
         <ForecastDetailsTable initialData={details} />
       </main>
     </div>

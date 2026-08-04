@@ -75,6 +75,7 @@
       "emptyTitle": "No projections found",
       "forecastDisclaimer": "Projection values are based on pending charges and expenses in the system and may not reflect the final amount received or paid.",
       "installment": "Installment",
+      "items": "items",
       "pendingExpenses": "Pending Expenses",
       "pendingRevenue": "Projected Revenue",
       "plan": "Plan",
@@ -100,6 +101,7 @@
     "helpLabel": "How it works?",
     "metrics": {
       "expenses": "Total Expenses",
+      "expensesMonthly": "Monthly Expenses",
       "extraExpenses": "Extra Expenses",
       "extraRevenue": "Extra Revenue",
       "installments": "Installments",
@@ -108,7 +110,9 @@
       "monthlyTotal": "Monthly Total",
       "netProfit": "Net Profit",
       "revenue": "Total Revenue",
-      "teacherPayouts": "Teacher Payouts"
+      "revenueMonthly": "Monthly Revenue",
+      "teacherPayouts": "Teacher Payouts",
+      "totalPeriod": "Total for Period"
     },
     "months": {
       "april": "April",

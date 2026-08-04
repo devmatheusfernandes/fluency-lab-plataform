@@ -363,9 +363,14 @@ export const financeService = {
   async getGatewayBalances() {
     let stripeAvailable = 0;
     let stripePending = 0;
+    let stripeStatus: "ok" | "not_configured" | "error" = "not_configured";
+    let stripeErrorMessage: string | undefined;
+
     let abacateAvailable = 0;
     let abacatePending = 0;
     let abacateBlocked = 0;
+    let abacateStatus: "ok" | "not_configured" | "sandbox" | "error" = "not_configured";
+    let abacateErrorMessage: string | undefined;
 
     // Fetch Stripe Balance
     if (env.STRIPE_SECRET_KEY && env.STRIPE_SECRET_KEY !== "mock_secret_key") {
@@ -375,8 +380,11 @@ export const financeService = {
         const usdPending = balance.pending.find((b) => b.currency === "usd")?.amount ?? 0;
         stripeAvailable = usdAvailable;
         stripePending = usdPending;
+        stripeStatus = "ok";
       } catch (error) {
         console.error("[financeService.getGatewayBalances] Stripe error:", error);
+        stripeStatus = "error";
+        stripeErrorMessage = error instanceof Error ? error.message : "Erro ao consultar saldo Stripe";
       }
     }
 
@@ -384,6 +392,7 @@ export const financeService = {
     if (env.ABACATEPAY_API_KEY) {
       if (env.ABACATEPAY_API_KEY.startsWith("abc_dev_")) {
         console.log("[financeService.getGatewayBalances] AbacatePay: Chave de sandbox detectada. Ignorando consulta de saldo e definindo como R$ 0,00.");
+        abacateStatus = "sandbox";
       } else {
         try {
           const res = await fetch("https://api.abacatepay.com/v2/store/get", {
@@ -399,13 +408,22 @@ export const financeService = {
               abacateAvailable = result.data.balance.available ?? 0;
               abacatePending = result.data.balance.pending ?? 0;
               abacateBlocked = result.data.balance.blocked ?? 0;
+              abacateStatus = "ok";
+            } else {
+              abacateStatus = "error";
+              abacateErrorMessage = "Resposta da API em formato inesperado";
+              console.warn("[financeService.getGatewayBalances] AbacatePay: formato de resposta inesperado:", result);
             }
           } else {
             const errorBody = await res.text();
             console.warn(`[financeService.getGatewayBalances] AbacatePay error HTTP ${res.status}:`, errorBody);
+            abacateStatus = "error";
+            abacateErrorMessage = `Erro HTTP ${res.status} ao consultar saldo`;
           }
         } catch (error) {
           console.warn("[financeService.getGatewayBalances] AbacatePay error:", error);
+          abacateStatus = "error";
+          abacateErrorMessage = error instanceof Error ? error.message : "Erro ao consultar saldo AbacatePay";
         }
       }
     }
@@ -415,12 +433,16 @@ export const financeService = {
         available: stripeAvailable,
         pending: stripePending,
         currency: "USD",
+        status: stripeStatus,
+        errorMessage: stripeErrorMessage,
       },
       abacate: {
         available: abacateAvailable,
         pending: abacatePending,
         blocked: abacateBlocked,
         currency: "BRL",
+        status: abacateStatus,
+        errorMessage: abacateErrorMessage,
       },
     };
   },

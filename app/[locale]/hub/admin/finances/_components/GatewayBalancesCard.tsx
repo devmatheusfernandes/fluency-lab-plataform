@@ -1,7 +1,9 @@
 "use client";
 
 import { useFormatter } from "next-intl";
-import { CreditCard, QrCode } from "lucide-react";
+import { CreditCard, QrCode, AlertTriangle } from "lucide-react";
+
+type GatewayStatus = "ok" | "not_configured" | "sandbox" | "error";
 
 interface GatewayBalancesCardProps {
   balances: {
@@ -9,14 +11,35 @@ interface GatewayBalancesCardProps {
       available: number;
       pending: number;
       currency: string;
+      status?: GatewayStatus;
+      errorMessage?: string;
     };
     abacate: {
       available: number;
       pending: number;
       blocked: number;
       currency: string;
+      status?: GatewayStatus;
+      errorMessage?: string;
     };
   };
+}
+
+const STATUS_LABEL: Record<GatewayStatus, string> = {
+  ok: "",
+  not_configured: "Chave da API não configurada",
+  sandbox: "Ambiente sandbox — saldo zerado propositalmente",
+  error: "Erro ao consultar a API",
+};
+
+function StatusWarning({ status, errorMessage }: { status?: GatewayStatus; errorMessage?: string }) {
+  if (!status || status === "ok") return null;
+  return (
+    <div className="flex items-start gap-1.5 text-[10px] text-amber-600 bg-amber-500/10 rounded-md px-2 py-1.5">
+      <AlertTriangle className="size-3 mt-0.5 shrink-0" />
+      <span>{errorMessage || STATUS_LABEL[status]}</span>
+    </div>
+  );
 }
 
 export function GatewayBalancesCard({ balances }: GatewayBalancesCardProps) {
@@ -37,6 +60,8 @@ export function GatewayBalancesCard({ balances }: GatewayBalancesCardProps) {
             </div>
           </div>
         </div>
+
+        <StatusWarning status={balances.abacate.status} errorMessage={balances.abacate.errorMessage} />
 
         <div className="flex flex-col">
           <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
@@ -85,6 +110,8 @@ export function GatewayBalancesCard({ balances }: GatewayBalancesCardProps) {
             </div>
           </div>
         </div>
+
+        <StatusWarning status={balances.stripe.status} errorMessage={balances.stripe.errorMessage} />
 
         <div className="flex flex-col">
           <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">

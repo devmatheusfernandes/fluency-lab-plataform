@@ -21,31 +21,32 @@ export function MetricsCards({ metrics, monthlyBreakdown, currentMonth }: Metric
   const t = useTranslations("AdminFinances.metrics");
   const format = useFormatter();
 
-  const selectedMonthData = currentMonth !== "all" ? monthlyBreakdown[currentMonth as number] : null;
+  const currentMonthIndex = new Date().getMonth();
+  const currentMonthData = monthlyBreakdown[currentMonthIndex] ?? null;
 
   const cards = [
     {
-      title: t("revenue"),
-      value: metrics.revenue.total,
+      title: t("revenueMonthly"),
+      value: currentMonthData?.revenue ?? 0,
       icon: ArrowUpCircle,
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
       details: [
         { label: t("installments"), value: metrics.revenue.installments },
         { label: t("extraRevenue"), value: metrics.revenue.extra },
-        ...(selectedMonthData ? [{ label: t("monthlyTotal"), value: selectedMonthData.revenue, isTotal: true }] : []),
+        { label: t("totalPeriod"), value: metrics.revenue.total, isTotal: true },
       ],
     },
     {
-      title: t("expenses"),
-      value: metrics.expenses.total,
+      title: t("expensesMonthly"),
+      value: currentMonthData?.expenses ?? 0,
       icon: ArrowDownCircle,
       color: "text-rose-500",
       bgColor: "bg-rose-500/10",
       details: [
         { label: t("teacherPayouts"), value: metrics.expenses.payouts },
         { label: t("extraExpenses"), value: metrics.expenses.extra },
-        ...(selectedMonthData ? [{ label: t("monthlyTotal"), value: selectedMonthData.expenses, isTotal: true }] : []),
+        { label: t("totalPeriod"), value: metrics.expenses.total, isTotal: true },
       ],
     },
     {
@@ -54,8 +55,8 @@ export function MetricsCards({ metrics, monthlyBreakdown, currentMonth }: Metric
       icon: Wallet,
       color: metrics.netProfit >= 0 ? "text-blue-500" : "text-amber-500",
       bgColor: metrics.netProfit >= 0 ? "bg-blue-500/10" : "bg-amber-500/10",
-      details: selectedMonthData ? [
-        { label: t("monthlyTotal"), value: selectedMonthData.netProfit, isTotal: true }
+      details: currentMonthData ? [
+        { label: t("monthlyTotal"), value: currentMonthData.netProfit, isTotal: true }
       ] : [],
     },
     {
