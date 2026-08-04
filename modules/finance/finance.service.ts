@@ -395,7 +395,7 @@ export const financeService = {
         abacateStatus = "sandbox";
       } else {
         try {
-          const res = await fetch("https://api.abacatepay.com/v2/store/get", {
+          const res = await fetch("https://api.abacatepay.com/v2/stores/get", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",

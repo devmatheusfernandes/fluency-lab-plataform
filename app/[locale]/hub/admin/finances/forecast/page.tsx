@@ -38,6 +38,7 @@ export default async function AdminForecastPage({
         subtitle={t("detailsSubtitle", { year })}
         backHref="/hub/admin/finances"
         className="contents"
+        showSubHeader={false}
       />
 
       <main className="p-4 md:p-6 flex flex-col">

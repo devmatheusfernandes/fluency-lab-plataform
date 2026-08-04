@@ -59,7 +59,7 @@ export function ForecastFilters({
   };
 
   return (
-    <div className="sticky top-2 z-30 mb-6 flex flex-col md:flex-row md:items-center gap-3 bg-card/90 backdrop-blur-md p-3 rounded-2xl border border-border/50 shadow-md">
+    <div className="sticky top-6 z-30 mb-6 flex flex-col md:flex-row md:items-center gap-3 bg-card/90 backdrop-blur-md p-3 rounded-2xl border border-border/50 shadow-md">
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={currentMonth.toString()}
