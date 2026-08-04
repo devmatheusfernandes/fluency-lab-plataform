@@ -218,10 +218,10 @@ export default function TeamSection({
       ],
     },
     {
-      name: t("members.giulia.name") || "Lucas",
-      role: t("members.giulia.role") || "Professor de Inglês",
+      name: t("members.lucas.name") || "Lucas",
+      role: t("members.lucas.role") || "Professor de Inglês",
       image: "/images/team/lucas.png",
-      bio: t("members.giulia.bio") || "Professor de inglês, focado em gramática e conversação.",
+      bio: t("members.lucas.bio") || "Professor de inglês, focado em gramática e conversação.",
       lang: "🇧🇷 🇺🇸",
       tags: [
         t("tags.grammar") || "Gramática",
@@ -229,10 +229,10 @@ export default function TeamSection({
       ],
     },
     {
-      name: t("members.giulia.name") || "Bianca",
-      role: t("members.giulia.role") || "Professora de Inglês",
+      name: t("members.bianca.name") || "Bianca",
+      role: t("members.bianca.role") || "Professora de Inglês",
       image: "/images/team/bianca.png",
-      bio: t("members.giulia.bio") || "Professora de inglês, focada no ensino dinamico e interativo.",
+      bio: t("members.bianca.bio") || "Professora de inglês, focada no ensino dinamico e interativo.",
       lang: "🇧🇷 🇺🇸",
       tags: [
         t("tags.kidsTeens") || "Kids",
