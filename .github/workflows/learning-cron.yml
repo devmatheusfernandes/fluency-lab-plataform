@@ -17,14 +17,27 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ]; then
-            echo "Error: NEXT_PUBLIC_APP_URL variable is not set."
+            echo "Error: NEXT_PUBLIC_APP_URL secret is not set."
             exit 1
           fi
           if [ -z "$CRON_SECRET" ]; then
             echo "Error: CRON_SECRET secret is not set."
             exit 1
           fi
-          curl -f -X POST "$APP_URL/api/cron/learning" \
-          -H "Authorization: Bearer $CRON_SECRET" \
-          -H "Content-Type: application/json"
 
+          BASE_URL="${APP_URL%/}"
+          echo "Triggering Cron at: $BASE_URL/api/cron/learning"
+
+          RESPONSE=$(curl -sL -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL/api/cron/learning" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json")
+
+          echo "Response output:"
+          echo "$RESPONSE"
+
+          if [[ "$RESPONSE" == *"HTTP_STATUS:200"* ]]; then
+            echo "Cron executed successfully!"
+          else
+            echo "Cron execution failed!"
+            exit 1
+          fi
