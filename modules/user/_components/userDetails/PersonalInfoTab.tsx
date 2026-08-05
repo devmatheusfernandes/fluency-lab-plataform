@@ -10,6 +10,8 @@ import {
   Eye,
   CheckCircle2,
   Loader2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -70,6 +72,15 @@ export function PersonalInfoTab({
     LanguageWithLessons[]
   >([]);
   const [isTogglingLanguage, setIsTogglingLanguage] = React.useState(false);
+  const [copiedField, setCopiedField] = React.useState<string | null>(null);
+
+  const handleCopy = (text: string, fieldId: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldId);
+    notify.success(t("copiedToClipboard") || "Copiado para a área de transferência!");
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   React.useEffect(() => {
     const fetchLanguages = async () => {
@@ -177,32 +188,73 @@ export function PersonalInfoTab({
 
         {/* Contact rows */}
         <div className="flex flex-col divide-y divide-border/50">
-          <div className="flex items-center gap-3 px-6 py-4 group">
-            <div className="p-1.5 rounded-sm bg-muted/50 text-muted-foreground group-hover:text-primary transition-colors">
-              <Mail className="w-3.5 h-3.5 shrink-0" />
+          <div className="flex items-center justify-between gap-3 px-6 py-4 group hover:bg-muted/20 transition-colors">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-1.5 rounded-sm bg-muted/50 text-muted-foreground group-hover:text-primary transition-colors">
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <span className="text-xs font-medium truncate">{user.email}</span>
             </div>
-            <span className="text-xs font-medium truncate">{user.email}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopy(user.email, "email");
+              }}
+              title={t("copy") || "Copiar"}
+            >
+              {copiedField === "email" ? (
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </Button>
           </div>
           {user.cellphone && (
             <div
-              className={`flex items-center gap-3 px-6 py-4 group transition-colors ${isAdmin && !revealedValues.cellphone ? "cursor-pointer hover:bg-primary/5" : ""}`}
-              onClick={() => isAdmin && openRevealVault("cellphone")}
+              className={`flex items-center justify-between gap-3 px-6 py-4 group transition-colors ${isAdmin && !revealedValues.cellphone ? "cursor-pointer hover:bg-primary/5" : "hover:bg-muted/20"}`}
+              onClick={() => isAdmin && !revealedValues.cellphone && openRevealVault("cellphone")}
             >
-              <div className="p-1.5 rounded-sm bg-muted/50 text-muted-foreground group-hover:text-primary transition-colors">
-                <Phone className="w-3.5 h-3.5 shrink-0" />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-foreground/80">
-                  {revealedValues.cellphone
-                    ? revealedValues.cellphone
-                    : `(••) •••••-${user.cellphone?.slice(-4)}`}
-                </span>
-                {isAdmin && !revealedValues.cellphone && (
-                  <span className="text-[9px] text-primary font-bold uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
-                    {t("view")}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-1.5 rounded-sm bg-muted/50 text-muted-foreground group-hover:text-primary transition-colors">
+                  <Phone className="w-3.5 h-3.5 shrink-0" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold text-foreground/80">
+                    {revealedValues.cellphone
+                      ? revealedValues.cellphone
+                      : `(••) •••••-${user.cellphone?.slice(-4)}`}
                   </span>
-                )}
+                  {isAdmin && !revealedValues.cellphone && (
+                    <span className="text-[9px] text-primary font-bold uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
+                      {t("view")}
+                    </span>
+                  )}
+                </div>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const copyVal = revealedValues.cellphone || (user.cellphone && !user.cellphone.includes("••") && !user.cellphone.includes(":") ? user.cellphone : null);
+                  if (copyVal) {
+                    handleCopy(copyVal, "cellphone");
+                  } else if (isAdmin && !revealedValues.cellphone) {
+                    openRevealVault("cellphone");
+                  }
+                }}
+                title={t("copy") || "Copiar"}
+              >
+                {copiedField === "cellphone" ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+              </Button>
             </div>
           )}
           <div className="flex items-center gap-3 px-6 py-4 group">
@@ -280,18 +332,41 @@ export function PersonalInfoTab({
               )}
               {user.guardianCellphone && (
                 <DataRow label={t("guardianCellphone")}>
-                  <div
-                    className={`flex items-center gap-2 group ${isAdmin && !revealedValues.guardianCellphone ? "cursor-pointer" : ""}`}
-                    onClick={() => isAdmin && openRevealVault("guardianCellphone")}
-                  >
-                    <span className={revealedValues.guardianCellphone ? "font-mono text-xs" : ""}>
-                      {revealedValues.guardianCellphone
-                        ? revealedValues.guardianCellphone
-                        : `(••) •••••-${user.guardianCellphone?.slice(-4)}`}
-                    </span>
-                    {isAdmin && !revealedValues.guardianCellphone && (
-                      <Eye className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
+                  <div className="flex items-center justify-end gap-2 group">
+                    <div
+                      className={`flex items-center gap-2 ${isAdmin && !revealedValues.guardianCellphone ? "cursor-pointer" : ""}`}
+                      onClick={() => isAdmin && !revealedValues.guardianCellphone && openRevealVault("guardianCellphone")}
+                    >
+                      <span className={revealedValues.guardianCellphone ? "font-mono text-xs" : ""}>
+                        {revealedValues.guardianCellphone
+                          ? revealedValues.guardianCellphone
+                          : `(••) •••••-${user.guardianCellphone?.slice(-4)}`}
+                      </span>
+                      {isAdmin && !revealedValues.guardianCellphone && (
+                        <Eye className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const copyVal = revealedValues.guardianCellphone || (user.guardianCellphone && !user.guardianCellphone.includes("••") && !user.guardianCellphone.includes(":") ? user.guardianCellphone : null);
+                        if (copyVal) {
+                          handleCopy(copyVal, "guardianCellphone");
+                        } else if (isAdmin && !revealedValues.guardianCellphone) {
+                          openRevealVault("guardianCellphone");
+                        }
+                      }}
+                      title={t("copy") || "Copiar"}
+                    >
+                      {copiedField === "guardianCellphone" ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
                   </div>
                 </DataRow>
               )}

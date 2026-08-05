@@ -8,7 +8,7 @@ import { onboardingAddressAction, updateOnboardingNationalityAction } from "@/mo
 import { notify } from "@/components/ui/toaster";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { getAddressByCep, isMinor as checkIsMinor, isValidTaxId, isValidCEP, isValidZipCode } from "@/modules/contract/contract.utils";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, ArrowLeft, ArrowRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { User } from "@/modules/user/user.schema";
@@ -21,43 +21,85 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-const addressFormSchema = z.object({
-    nationality: z.string().min(1),
-    taxId: z.string().min(1, "Campo obrigatório"),
-    cellphone: z.string().min(1, "Campo obrigatório"),
-    zipCode: z.string().min(1, "Campo obrigatório"),
-    street: z.string().min(1, "Campo obrigatório"),
-    number: z.string().min(1, "Campo obrigatório"),
-    neighborhood: z.string().min(1, "Campo obrigatório"),
-    city: z.string().min(1, "Campo obrigatório"),
-    state: z.string().min(1, "Campo obrigatório"),
-    guardianName: z.string().optional(),
-    guardianTaxId: z.string().optional(),
-    guardianRelationship: z.string().optional(),
-    guardianCellphone: z.string().optional(),
-}).superRefine((data, ctx) => {
-    // 1. Validação de Tax ID (CPF ou SSN/Foreign)
-    const isBR = data.nationality === "brazilian";
-    if (!isValidTaxId(data.taxId, isBR ? "BR" : "US", "individual")) {
-        ctx.addIssue({
-            code: "custom",
-            message: isBR ? "CPF inválido" : "Tax ID inválido",
-            path: ["taxId"],
-        });
-    }
+const createAddressFormSchema = (isMinor: boolean) =>
+    z.object({
+        nationality: z.string().min(1),
+        taxId: z.string().min(1, "Campo obrigatório"),
+        cellphone: z.string().min(1, "Campo obrigatório"),
+        zipCode: z.string().min(1, "Campo obrigatório"),
+        street: z.string().min(1, "Campo obrigatório"),
+        number: z.string().min(1, "Campo obrigatório"),
+        neighborhood: z.string().min(1, "Campo obrigatório"),
+        city: z.string().min(1, "Campo obrigatório"),
+        state: z.string().min(1, "Campo obrigatório"),
+        guardianName: z.string().optional(),
+        guardianTaxId: z.string().optional(),
+        guardianRelationship: z.string().optional(),
+        guardianCellphone: z.string().optional(),
+    }).superRefine((data, ctx) => {
+        // 1. Validação de Tax ID (CPF ou SSN/Foreign)
+        const isBR = data.nationality === "brazilian";
+        if (!isValidTaxId(data.taxId, isBR ? "BR" : "US", "individual")) {
+            ctx.addIssue({
+                code: "custom",
+                message: isBR ? "CPF inválido" : "Tax ID inválido",
+                path: ["taxId"],
+            });
+        }
 
-    // 2. Validação de CEP ou ZIP Code
-    const isZipValid = isBR ? isValidCEP(data.zipCode) : isValidZipCode(data.zipCode);
-    if (!isZipValid) {
-        ctx.addIssue({
-            code: "custom",
-            message: isBR ? "CEP inválido" : "ZIP Code inválido",
-            path: ["zipCode"],
-        });
-    }
-});
+        // 2. Validação de CEP ou ZIP Code
+        const isZipValid = isBR ? isValidCEP(data.zipCode) : isValidZipCode(data.zipCode);
+        if (!isZipValid) {
+            ctx.addIssue({
+                code: "custom",
+                message: isBR ? "CEP inválido" : "ZIP Code inválido",
+                path: ["zipCode"],
+            });
+        }
 
-type AddressForm = z.input<typeof addressFormSchema>;
+        // 3. Validação dos campos do Responsável se for menor de idade
+        if (isMinor) {
+            if (!data.guardianName || data.guardianName.trim().length < 2) {
+                ctx.addIssue({
+                    code: "custom",
+                    message: "Nome do responsável é obrigatório",
+                    path: ["guardianName"],
+                });
+            }
+
+            if (!data.guardianTaxId || data.guardianTaxId.trim().length === 0) {
+                ctx.addIssue({
+                    code: "custom",
+                    message: "CPF do responsável é obrigatório",
+                    path: ["guardianTaxId"],
+                });
+            } else if (!isValidTaxId(data.guardianTaxId, "BR", "individual")) {
+                ctx.addIssue({
+                    code: "custom",
+                    message: "CPF do responsável inválido",
+                    path: ["guardianTaxId"],
+                });
+            }
+
+            if (!data.guardianRelationship || data.guardianRelationship.trim().length === 0) {
+                ctx.addIssue({
+                    code: "custom",
+                    message: "Parentesco do responsável é obrigatório (ex: Mãe, Pai)",
+                    path: ["guardianRelationship"],
+                });
+            }
+
+            if (!data.guardianCellphone || data.guardianCellphone.trim().length === 0) {
+                ctx.addIssue({
+                    code: "custom",
+                    message: "Celular do responsável é obrigatório",
+                    path: ["guardianCellphone"],
+                });
+            }
+        }
+    });
+
+type AddressForm = z.input<ReturnType<typeof createAddressFormSchema>>;
 
 interface FieldProps {
     label: string;
@@ -96,6 +138,7 @@ export function StepAddress({
     const [isFetchingZip, setIsFetchingZip] = useState(false);
 
     const minor = checkIsMinor(initialData.birthDate);
+    const addressSchema = useMemo(() => createAddressFormSchema(minor), [minor]);
 
     const initial = initialData;
     const {
@@ -105,7 +148,7 @@ export function StepAddress({
         watch,
         formState: { errors },
     } = useForm<AddressForm>({
-        resolver: zodResolver(addressFormSchema),
+        resolver: zodResolver(addressSchema),
         defaultValues: {
             nationality: initial.nationality || "brazilian",
             taxId: initial.taxId || "",
@@ -156,7 +199,12 @@ export function StepAddress({
         if (result?.data?.success) {
             onNext(payload as unknown as Partial<User>);
         } else {
-            notify.error(result?.data?.error || "Error");
+            const errorMsg =
+                result?.data?.error ||
+                (result?.validationErrors ? "Por favor, preencha todos os campos do responsável e do endereço corretamente." : null) ||
+                result?.serverError ||
+                "Não foi possível salvar os dados. Verifique as informações e tente novamente.";
+            notify.error(errorMsg);
         }
     };
 

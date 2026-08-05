@@ -1319,31 +1319,118 @@ export class CommunicationService {
         cache: "no-store",
       });
 
-      if (!response.ok) {
-        console.error("[CommunicationService.getResendUsage] API Error:", response.statusText);
-        return null;
+      if (response.ok) {
+        return await response.json();
+      }
+      console.warn("[CommunicationService.getResendUsage] Usage API returned non-ok status, falling back to dynamic stats calculation.");
+    } catch (error) {
+      console.error("[CommunicationService.getResendUsage] Fetch error:", error);
+    }
+
+    return this.getCalculatedResendUsageFallback();
+  }
+
+  private async getCalculatedResendUsageFallback(): Promise<import("./communication.types").ResendUsage> {
+    const dbEmails = await communicationRepository.getEmailsList(500);
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOf24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    let monthlySent = 0;
+    let monthlyReceived = 0;
+    let dailySent = 0;
+    let dailyReceived = 0;
+    const recipientSet = new Set<string>();
+
+    for (const email of dbEmails) {
+      const emailDate = new Date(email.createdAt);
+      const isOutbound = email.direction === "outbound";
+
+      if (Array.isArray(email.to)) {
+        email.to.forEach(addr => { if (addr) recipientSet.add(addr); });
+      } else if (email.to) {
+        recipientSet.add(email.to);
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error("[CommunicationService.getResendUsage] Error:", error);
-      return null;
+      if (emailDate >= startOfMonth) {
+        if (isOutbound) monthlySent++;
+        else monthlyReceived++;
+      }
+
+      if (emailDate >= startOf24h) {
+        if (isOutbound) dailySent++;
+        else dailyReceived++;
+      }
     }
+
+    const monthlyTotal = monthlySent + monthlyReceived;
+    const dailyTotal = dailySent + dailyReceived;
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    return {
+      object: "usage",
+      generated_at: now.toISOString(),
+      emails: {
+        daily: {
+          used: dailyTotal,
+          limit: 100,
+          sent: dailySent,
+          received: dailyReceived,
+          resets_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        },
+        monthly: {
+          used: monthlyTotal,
+          limit: 3000,
+          sent: monthlySent,
+          received: monthlyReceived,
+          resets_at: nextMonth.toISOString(),
+        },
+      },
+      contacts: {
+        used: recipientSet.size,
+        limit: 3000,
+      },
+      rate_limit: {
+        limit: 10,
+        duration: "1000ms",
+      },
+    };
   }
 
   async getEmails() {
+    let apiEmails: import("./communication.types").EmailMessage[] = [];
+
     try {
       const resendRes = await resend.emails.list();
-      if (resendRes.data && Array.isArray(resendRes.data)) {
-        const items = await Promise.all(
-          resendRes.data.map(async (item) => {
+      // Handle resendRes.data which can be { object: 'list', data: [...] } or direct array
+      const rawList = Array.isArray(resendRes.data)
+        ? resendRes.data
+        : (resendRes.data && Array.isArray((resendRes.data as { data?: unknown[] }).data)
+          ? (resendRes.data as { data: unknown[] }).data
+          : null);
+
+      if (rawList && Array.isArray(rawList)) {
+        apiEmails = await Promise.all(
+          (rawList as Array<{
+            id: string;
+            from: string;
+            to: string | string[];
+            subject?: string;
+            created_at: string;
+            last_event?: string;
+          }>).map(async (item) => {
             const recipientEmail = Array.isArray(item.to) ? item.to[0] : item.to;
             let studentName: string | null = null;
+            let studentPhotoUrl: string | null = null;
+            let studentId: string | null = null;
 
             if (recipientEmail) {
               const student = await communicationRepository.findUserByEmail(recipientEmail);
               if (student) {
                 studentName = student.name;
+                studentPhotoUrl = student.photoUrl || null;
+                studentId = student.id;
               }
             }
 
@@ -1357,22 +1444,55 @@ export class CommunicationService {
               text: null as string | null,
               direction: "outbound" as const,
               status: item.last_event || "sent",
-              studentId: null,
+              studentId,
               createdAt: new Date(item.created_at),
               updatedAt: new Date(item.created_at),
               metadata: { lastEvent: item.last_event },
               studentName,
-              studentPhotoUrl: null,
+              studentPhotoUrl,
               studentEmail: recipientEmail || null,
             };
           })
         );
-        return items;
       }
     } catch (error) {
-      console.error("[CommunicationService.getEmails] Resend API error, falling back to DB:", error);
+      console.error("[CommunicationService.getEmails] Resend API error:", error);
     }
-    return communicationRepository.getEmailsList();
+
+    const dbEmails = await communicationRepository.getEmailsList(100);
+
+    const emailMap = new Map<string, import("./communication.types").EmailMessage>();
+
+    // Put API emails in map first
+    for (const email of apiEmails) {
+      const key = email.resendId || email.id;
+      emailMap.set(key, email);
+    }
+
+    // Overlay DB emails (which contain full HTML/text and inbound emails)
+    for (const email of dbEmails) {
+      const key = email.resendId || email.id;
+      const existing = emailMap.get(key);
+      if (existing) {
+        emailMap.set(key, {
+          ...existing,
+          ...email,
+          studentName: email.studentName || existing.studentName,
+          studentPhotoUrl: email.studentPhotoUrl || existing.studentPhotoUrl,
+          studentEmail: email.studentEmail || existing.studentEmail,
+        });
+      } else {
+        emailMap.set(key, email);
+      }
+    }
+
+    const sortedEmails = Array.from(emailMap.values()).sort((a, b) => {
+      const tA = new Date(a.createdAt).getTime();
+      const tB = new Date(b.createdAt).getTime();
+      return tB - tA;
+    });
+
+    return sortedEmails;
   }
 
   async getEmailDetail(id: string) {
@@ -1382,8 +1502,22 @@ export class CommunicationService {
         return res.data;
       }
     } catch (error) {
-      console.error("[CommunicationService.getEmailDetail] Error:", error);
+      console.error("[CommunicationService.getEmailDetail] Resend API error:", error);
     }
+
+    const dbEmail = await communicationRepository.findEmailByResendId(id);
+    if (dbEmail) {
+      return {
+        id: dbEmail.id,
+        from: dbEmail.from,
+        to: dbEmail.to,
+        subject: dbEmail.subject,
+        html: dbEmail.html,
+        text: dbEmail.text,
+        created_at: dbEmail.createdAt,
+      };
+    }
+
     return null;
   }
 

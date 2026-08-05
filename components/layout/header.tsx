@@ -201,18 +201,72 @@ const Header = React.forwardRef<HTMLDivElement, HeaderProps>(({
                                         </>
                                     ) : (
                                         <>
-                                            {!showSubHeader && actions.map((act, index) => (
-                                                <Button
-                                                    key={index}
-                                                    onClick={act.onClick}
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className={cn("h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-full", act.className)}
-                                                    title={act.label}
-                                                >
-                                                    {act.icon}
-                                                </Button>
-                                            ))}
+                                            {!showSubHeader && (
+                                                <>
+                                                    {onSearchChange && (
+                                                        <div className="relative flex items-center justify-end h-9">
+                                                            <AnimatePresence initial={false}>
+                                                                {isSearchOpen ? (
+                                                                    <motion.div
+                                                                        key="desktop-header-search-input"
+                                                                        initial={{ width: 36, opacity: 0 }}
+                                                                        animate={{ width: 220, opacity: 1 }}
+                                                                        exit={{ width: 36, opacity: 0 }}
+                                                                        transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                                                                        className="flex items-center"
+                                                                    >
+                                                                        <div className="relative w-full">
+                                                                            <SearchBar
+                                                                                autoFocus
+                                                                                value={searchValue}
+                                                                                onChange={handleSearch}
+                                                                                placeholder="Buscar..."
+                                                                            />
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full hover:bg-transparent"
+                                                                                onClick={closeSearch}
+                                                                            >
+                                                                                <X className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </motion.div>
+                                                                ) : (
+                                                                    <motion.div
+                                                                        key="desktop-header-search-button"
+                                                                        initial={{ opacity: 0 }}
+                                                                        animate={{ opacity: 1 }}
+                                                                        exit={{ opacity: 0 }}
+                                                                    >
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-full"
+                                                                            onClick={() => setIsSearchOpen(true)}
+                                                                            title="Buscar"
+                                                                        >
+                                                                            <Search className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    )}
+                                                    {actions.map((act, index) => (
+                                                        <Button
+                                                            key={index}
+                                                            onClick={act.onClick}
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className={cn("h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-full", act.className)}
+                                                            title={act.label}
+                                                        >
+                                                            {act.icon}
+                                                        </Button>
+                                                    ))}
+                                                </>
+                                            )}
                                             <ThemeSwitcher />
                                             <NotificationBell />
                                             {displayUser && <UserMenu user={displayUser} />}

@@ -15,6 +15,7 @@ import { notify } from "@/components/ui/toaster";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { signInSchema, type SignInValues } from "@/modules/user/user.schema";
+import { Eye, EyeOff } from "lucide-react";
 import { TransitionAnimation } from "@/components/ui/transition-animation";
 import { VerifyMfaVault } from "./VerifyMfaVault";
 import { LockKeyholeIcon, type LockKeyholeIconHandle } from "@/components/animated-icons/lock-keyhole";
@@ -30,6 +31,7 @@ export function SignInForm() {
   const [isCredentialsLoading, setIsCredentialsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showMfa, setShowMfa] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const iconRef = useRef<LockKeyholeIconHandle>(null);
 
   const {
@@ -165,14 +167,25 @@ export function SignInForm() {
         </div>
 
         <div className="space-y-1">
-          <Input
-            type="password"
-            {...register("password")}
-            placeholder={t("password") || "Senha"}
-            autoComplete="current-password"
-            className={`h-12 scroll-mt-28 ${errors.password ? "border-destructive! focus-visible:ring-destructive!" : ""}`}
-            disabled={isLoading}
-          />
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              {...register("password")}
+              placeholder={t("password") || "Senha"}
+              autoComplete="current-password"
+              className={`h-12 pr-10 scroll-mt-28 ${errors.password ? "border-destructive! focus-visible:ring-destructive!" : ""}`}
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground transition-colors duration-200 focus:outline-none"
+              tabIndex={-1}
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
           {errors.password && (
             <p className="text-xs font-medium text-destructive">
               {tv(errors.password.message?.split(".")[1] || "") || errors.password.message}
