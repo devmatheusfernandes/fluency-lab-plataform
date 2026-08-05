@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { WhatsAppMessage, WhatsAppTemplate } from "../communication.types";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,15 @@ export function MessageBubble({ msg, templates = [] }: MessageBubbleProps) {
   const isOut = msg.direction === "outbound";
   const isTemplate = msg.content?.startsWith("[Template:");
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsLightboxOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isLightboxOpen]);
 
   const [copiedPix, setCopiedPix] = useState(false);
 
@@ -122,13 +132,15 @@ export function MessageBubble({ msg, templates = [] }: MessageBubbleProps) {
             {caption && <p className="whitespace-pre-line mt-1 text-[13.5px] leading-relaxed">{caption}</p>}
 
             {/* Premium Fullscreen Lightbox */}
-            {isLightboxOpen && (
+            {isLightboxOpen && typeof document !== "undefined" && createPortal(
               <div
-                className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9999] flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
+                className="fixed inset-0 bg-black/95 backdrop-blur-md z-[99999] flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
                 onClick={() => setIsLightboxOpen(false)}
               >
                 <button
-                  className="absolute top-6 right-6 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95"
+                  type="button"
+                  aria-label="Fechar visualização"
+                  className="absolute top-6 right-6 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95 z-10"
                   onClick={() => setIsLightboxOpen(false)}
                 >
                   <X className="w-5 h-5" />
@@ -138,13 +150,18 @@ export function MessageBubble({ msg, templates = [] }: MessageBubbleProps) {
                   src={sourceUrl}
                   alt={caption || "Imagem ampliada"}
                   className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                  onClick={(e) => e.stopPropagation()}
                 />
                 {caption && (
-                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm border border-white/10 text-white text-xs px-5 py-2.5 rounded-full max-w-[80%] text-center leading-snug">
+                  <div
+                    className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm border border-white/10 text-white text-xs px-5 py-2.5 rounded-full max-w-[80%] text-center leading-snug"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {caption}
                   </div>
                 )}
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         );

@@ -22,6 +22,7 @@ import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { RoleGuard } from "@/components/ui/role-guard";
+import { useIsMobile } from "@/hooks/ui/use-device";
 
 interface UsersPageClientProps {
   initialData: AdminUserDTO[];
@@ -42,6 +43,7 @@ export function UsersPageClient({
   studentPaymentsMap,
   studentNextClassesMap,
 }: UsersPageClientProps) {
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -56,11 +58,19 @@ export function UsersPageClient({
   const tCommon = useTranslations("Common");
 
   const filteredUsers = useMemo(() => {
+    const cleanSearch = search.trim().toLowerCase();
+    const searchDigits = search.replace(/\D/g, "");
+
     return initialData.filter((user) => {
+      const userPhone = user.cellphone || "";
+      const userPhoneDigits = userPhone.replace(/\D/g, "");
+
       const matchesSearch =
-        search === "" ||
-        user.name.toLowerCase().includes(search.toLowerCase()) ||
-        user.email.toLowerCase().includes(search.toLowerCase());
+        cleanSearch === "" ||
+        user.name.toLowerCase().includes(cleanSearch) ||
+        user.email.toLowerCase().includes(cleanSearch) ||
+        (userPhone && userPhone.toLowerCase().includes(cleanSearch)) ||
+        (searchDigits.length > 0 && userPhoneDigits.includes(searchDigits));
 
       const matchesRole = roleFilter === "all" || user.role === roleFilter;
 
@@ -114,8 +124,8 @@ export function UsersPageClient({
           } : null
         ] as (HeaderAction | null)[]).filter((action): action is HeaderAction => action !== null)}
         className="contents"
+        showSubHeader={isMobile}
       />
-
       <main className="container">
         <div className="flex flex-wrap md:flex-row gap-2 mb-4">
           <div className="w-fit">

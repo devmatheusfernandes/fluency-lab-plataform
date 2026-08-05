@@ -316,6 +316,7 @@ export interface AdminUserDTO {
   isActive: boolean;
   createdAt: Date;
   teacherHourlyRate: number;
+  cellphone?: string | null;
 }
 
 

@@ -420,6 +420,10 @@ export const userService = {
   },
 
   sanitizeUserForAdmin(user: User): AdminUserDTO {
+    const decryptedCellphone = user.cellphone && user.cellphone.includes(":")
+      ? decrypt(user.cellphone)
+      : user.cellphone;
+
     return {
       id: user.id,
       name: user.name,
@@ -429,6 +433,7 @@ export const userService = {
       isActive: user.isActive,
       createdAt: user.createdAt,
       teacherHourlyRate: user.teacherHourlyRate || 4200,
+      cellphone: decryptedCellphone || null,
     };
   }
 };
