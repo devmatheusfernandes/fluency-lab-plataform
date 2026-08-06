@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Logo from "@/public/brand/logo.png";
-import { ArrowUp, MessageCircle, AtSign, ChevronDown, Mail, MessageSquare, HelpCircle } from "lucide-react";
+import { ArrowUp, MessageCircle, AtSign, Mail, MessageSquare } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -15,9 +15,8 @@ import { notify } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { ThemeSwitcher } from "../ui/theme-switcher";
 import { LanguageSwitcher } from "../ui/language-switcher";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { SystemSettings } from "@/modules/settings/settings.schema";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Vault,
   VaultContent,
@@ -35,6 +34,13 @@ type NewsletterValues = z.infer<typeof newsletterSchema>;
 
 export default function Footer({ settings }: { settings: SystemSettings }) {
   const t = useTranslations("LandingPage.Footer");
+  const translate = (key: string, fallback: string) => {
+    try {
+      return t(key) as string;
+    } catch {
+      return fallback;
+    }
+  };
   const {
     register,
     handleSubmit,
@@ -49,8 +55,6 @@ export default function Footer({ settings }: { settings: SystemSettings }) {
   const [isScrollingToTop, setIsScrollingToTop] = useState(false);
   const [clickedFrom, setClickedFrom] = useState<"dock" | "float" | null>(null);
   const [isSupportVaultOpen, setIsSupportVaultOpen] = useState(false);
-  const [vaultTab, setVaultTab] = useState<"contact" | "faq">("contact");
-  const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -195,6 +199,12 @@ export default function Footer({ settings }: { settings: SystemSettings }) {
                 ],
               },
               {
+                title: translate("sections.app.title", "App"),
+                links: [
+                  { label: translate("sections.app.links.download", "Baixar Aplicativo"), href: "/download" },
+                ],
+              },
+              {
                 title: t("sections.support.title") || "Suporte",
                 links: [
                   {
@@ -204,8 +214,7 @@ export default function Footer({ settings }: { settings: SystemSettings }) {
                   },
                   {
                     label: t("sections.support.links.faq"),
-                    href: "#",
-                    action: "faq",
+                    href: "/faq",
                   },
                 ],
               },
@@ -220,10 +229,7 @@ export default function Footer({ settings }: { settings: SystemSettings }) {
                       {("action" in link) && link.action ? (
                         <button
                           type="button"
-                          onClick={() => {
-                            setVaultTab(link.action as "contact" | "faq");
-                            setIsSupportVaultOpen(true);
-                          }}
+                          onClick={() => setIsSupportVaultOpen(true)}
                           className="hover:text-primary transition-colors block py-1 text-left cursor-pointer w-full bg-transparent border-none p-0 outline-none text-slate-600 dark:text-slate-300 text-sm font-normal"
                         >
                           {link.label || "Link"}
@@ -327,123 +333,52 @@ export default function Footer({ settings }: { settings: SystemSettings }) {
       )}
 
       <Vault open={isSupportVaultOpen} onOpenChange={setIsSupportVaultOpen}>
-        <VaultContent className="sm:max-w-lg" aria-label="Suporte e FAQ">
+        <VaultContent className="sm:max-w-lg" aria-label="Suporte">
           <VaultHeader>
             <VaultTitle>Suporte FluencyLab</VaultTitle>
             <VaultDescription>Como podemos ajudar você hoje?</VaultDescription>
           </VaultHeader>
           <VaultBody>
-            <Tabs
-              value={vaultTab}
-              onValueChange={(val) => setVaultTab(val as "contact" | "faq")}
-              className="w-full h-fit py-2"
-            >
-              <TabsList className="grid grid-cols-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
-                <TabsTrigger
-                  value="contact"
-                  className="rounded-md font-medium text-xs md:text-sm flex items-center justify-center gap-1.5 border-none"
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-slate-600 dark:text-slate-400 text-center leading-relaxed">
+                {settings.contactText}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <a
+                  href={`https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(
+                    settings.whatsappMessage
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center justify-center p-5 rounded-2xl border border-slate-150 dark:border-slate-800/80 hover:border-primary/20 dark:hover:border-primary/20 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-primary/5 transition-all text-center group"
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  Fale Conosco
-                </TabsTrigger>
-                <TabsTrigger
-                  value="faq"
-                  className="rounded-md font-medium text-xs md:text-sm flex items-center justify-center gap-1.5 border-none"
+                  <div className="w-10 h-10 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366] mb-3 group-hover:scale-110 transition-transform">
+                    <MessageCircle className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                    WhatsApp
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Conectar instantaneamente
+                  </span>
+                </a>
+
+                <a
+                  href={`mailto:${settings.supportEmail}`}
+                  className="flex flex-col items-center justify-center p-5 rounded-2xl border border-slate-150 dark:border-slate-800/80 hover:border-primary/20 dark:hover:border-primary/20 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-primary/5 transition-all text-center group"
                 >
-                  <HelpCircle className="w-4 h-4" />
-                  FAQ
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="contact" className="space-y-4 pt-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400 text-center leading-relaxed">
-                  {settings.contactText}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <a
-                    href={`https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(
-                      settings.whatsappMessage
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center p-5 rounded-2xl border border-slate-150 dark:border-slate-800/80 hover:border-primary/20 dark:hover:border-primary/20 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-primary/5 transition-all text-center group"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366] mb-3 group-hover:scale-110 transition-transform">
-                      <MessageCircle className="w-5 h-5" />
-                    </div>
-                    <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-                      WhatsApp
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Conectar instantaneamente
-                    </span>
-                  </a>
-
-                  <a
-                    href={`mailto:${settings.supportEmail}`}
-                    className="flex flex-col items-center justify-center p-5 rounded-2xl border border-slate-150 dark:border-slate-800/80 hover:border-primary/20 dark:hover:border-primary/20 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-primary/5 transition-all text-center group"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
-                      <Mail className="w-5 h-5" />
-                    </div>
-                    <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-                      E-mail
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate max-w-full px-1">
-                      {settings.supportEmail}
-                    </span>
-                  </a>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="faq" className="pt-2">
-                <div className="space-y-2 mt-4 max-h-[50vh] overflow-y-auto pr-1 no-scrollbar">
-                  {settings.faq.length === 0 ? (
-                    <p className="text-sm text-slate-500 text-center py-8">
-                      Nenhuma pergunta frequente cadastrada.
-                    </p>
-                  ) : (
-                    settings.faq.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="border border-slate-100 dark:border-slate-850 rounded-lg overflow-hidden"
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenFaqIdx(openFaqIdx === idx ? null : idx)
-                          }
-                          className="w-full flex justify-between items-center px-4 py-3 bg-slate-50/30 dark:bg-slate-900/20 text-left font-semibold text-xs md:text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors gap-2"
-                        >
-                          <span>{item.question}</span>
-                          <ChevronDown
-                            className={cn(
-                              "w-4 h-4 transition-transform text-slate-500 shrink-0",
-                              openFaqIdx === idx && "rotate-180"
-                            )}
-                          />
-                        </button>
-                        <AnimatePresence initial={false}>
-                          {openFaqIdx === idx && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="overflow-hidden bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-850"
-                            >
-                              <div className="p-4 text-xs md:text-sm text-slate-650 dark:text-slate-350 leading-relaxed whitespace-pre-wrap">
-                                {item.answer}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                    E-mail
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate max-w-full px-1">
+                    {settings.supportEmail}
+                  </span>
+                </a>
+              </div>
+            </div>
           </VaultBody>
         </VaultContent>
       </Vault>

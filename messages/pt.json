@@ -1029,6 +1029,12 @@
           },
           "title": "Sobre"
         },
+        "app": {
+          "links": {
+            "download": "Baixar Aplicativo"
+          },
+          "title": "App"
+        },
         "social": {
           "title": "Social"
         },
@@ -3319,5 +3325,18 @@
     "androidStep3": "Confirme a instalação na janela de diálogo",
     "alreadyInstalled": "O aplicativo já está instalado!",
     "backToPlatform": "Ir para a plataforma"
+  },
+  "FaqPage": {
+    "title": "FAQ",
+    "description": "Aqui você encontra respostas e soluções rápidas para as dúvidas mais comuns dos alunos.",
+    "searchPlaceholder": "Buscar artigos e dúvidas",
+    "searchHelp": "Pesquise por palavras-chave para encontrar respostas mais rápido.",
+    "noResults": "Nenhum resultado encontrado para a sua busca.",
+    "helpSectionTitle": "Artigos Úteis",
+    "helpSectionHeadline": "Encontre guias e respostas rápidas",
+    "helpSectionBody": "Use o buscador acima para filtrar temas e encontrar o que mais ajuda você.",
+    "helpItem1": "Como usar o app no celular",
+    "helpItem2": "Resolução de problemas de login",
+    "helpItem3": "Dicas para tirar melhor proveito das aulas"
   }
 }

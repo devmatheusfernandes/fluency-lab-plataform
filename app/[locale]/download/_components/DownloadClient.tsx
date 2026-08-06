@@ -15,6 +15,9 @@ import {
   ChevronRight 
 } from "lucide-react";
 import Link from "next/link";
+import { BackButton } from "@/components/ui/back-button";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 
 interface DownloadClientProps {
   translations: {
@@ -60,6 +63,15 @@ export function DownloadClient({ translations: t }: DownloadClientProps) {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 px-4 py-8">
+            <header className="sticky top-0 w-full border-b bg-background">
+              <div className="flex h-fit items-center justify-between">
+                <BackButton href="/" />
+                <div className="flex items-center gap-4">
+                  <LanguageSwitcher />
+                  <ThemeSwitcher />
+                </div>
+              </div>
+            </header>
       {/* Background Glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-20%] w-[80vw] h-[80vw] rounded-full bg-violet-500/10 blur-[120px] dark:bg-violet-600/5" />
@@ -77,7 +89,6 @@ export function DownloadClient({ translations: t }: DownloadClientProps) {
           className="flex flex-col items-center gap-4"
         >
           <div className="relative">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-violet-600 to-blue-600 blur-md opacity-40 dark:opacity-60" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
               src="/icons/android/launchericon-transparent-512x512.png" 

@@ -1040,6 +1040,12 @@
           },
           "title": "Student"
         },
+        "app": {
+          "links": {
+            "download": "Download App"
+          },
+          "title": "App"
+        },
         "support": {
           "links": {
             "contact": "Contact Us",
@@ -3320,5 +3326,18 @@
     "androidStep3": "Confirm installation in the dialog box",
     "alreadyInstalled": "The app is already installed!",
     "backToPlatform": "Back to Platform"
+  },
+  "FaqPage": {
+    "title": "FAQ",
+    "description": "Find answers and quick solutions for the most common student questions.",
+    "searchPlaceholder": "Search articles and questions",
+    "searchHelp": "Search keywords to find answers faster.",
+    "noResults": "No results found for your search.",
+    "helpSectionTitle": "Useful Articles",
+    "helpSectionHeadline": "Find quick guides and answers",
+    "helpSectionBody": "Use the search bar above to filter topics and find what helps you most.",
+    "helpItem1": "How to use the app on your phone",
+    "helpItem2": "Fix login issues",
+    "helpItem3": "Tips to get the most out of your lessons"
   }
 }
