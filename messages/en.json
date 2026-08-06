@@ -2545,6 +2545,8 @@
     "weekly": "Weekly"
   },
   "UserManagement": {
+    "copy": "Copy",
+    "copiedToClipboard": "Copied to clipboard!",
     "invitationsAndAccess": "Invitations & Access",
     "resendAccessLink": "Resend Access Link",
     "resendAccessLinkDesc": "Sends an email and a WhatsApp message (if registered) with instructions for the first access and password definition for {name}.",
