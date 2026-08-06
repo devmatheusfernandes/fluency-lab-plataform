@@ -11,6 +11,7 @@ import { adminAuth } from "@/lib/firebase-admin";
 import { NewUser, createUserSchema, requestNewInviteSchema, updateUserSchema, notificationPrefsSchema, lgpdConsentSchema } from "./user.schema";
 import { env } from "@/env";
 import { communicationService } from "@/modules/communication/communication.service";
+import { notificationService } from "@/modules/notification/notification.service";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { decrypt } from "@/lib/cryptography";
 import { verifySudoMode, getCurrentUser } from "@/lib/auth-server";
@@ -814,5 +815,66 @@ export const resendCancellationFeeAction = adminAction
     } catch (error) {
       console.error("[resendCancellationFeeAction] Error:", error);
       return { success: false, error: "error" };
+    }
+  });
+
+export const markCancellationFeePaidAction = adminAction
+  .metadata({ name: "markCancellationFeePaid" })
+  .inputSchema(
+    z.object({
+      userId: z.string(),
+      password: z.string(),
+    })
+  )
+  .action(async ({ parsedInput, ctx }) => {
+    try {
+      const { userId, password } = parsedInput;
+
+      // Rate limit: 5 confirmations per hour to prevent brute-force abuse
+      const limit = await checkRateLimit("sudo_cancel_fee_paid", ctx.user.id, 5, 3600 * 1000);
+      if (!limit.success) return { success: false, error: "rateLimitExceeded" };
+
+      const isValid = await verifySudoMode(ctx.user.id, ctx.user.email!, password);
+      if (!isValid) return { success: false, error: "authError" };
+
+      const user = await userService.getUserById(userId);
+      if (!user) return { success: false, error: "userNotFound" };
+
+      if (!user.cancellationPending || !user.cancellationPixCode || !user.cancellationAmount) {
+        return { success: false, error: "noCancellationFee" };
+      }
+
+      const { contractService } = await import("../contract/contract.service");
+      const contracts = await contractService.getUserContracts(userId);
+      const activeContract = contracts.find((c) => c.status === "signed" && c.subscriptionId);
+
+      if (!activeContract?.subscriptionId) {
+        return { success: false, error: "subscriptionNotFound" };
+      }
+
+      const { billingService } = await import("../billing/billing.service");
+      await billingService.confirmCancellationFeePayment(activeContract.subscriptionId);
+
+      try {
+        await notificationService.sendNotification({
+          title: "✅ Taxa de cancelamento confirmada",
+          body: `Recebemos o pagamento de ${(user.cancellationAmount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. Seu cadastro foi desativado.`,
+          targetType: "specific",
+          userIds: [userId],
+          channels: { inApp: true, push: true },
+        });
+      } catch (error) {
+        console.error("[markCancellationFeePaidAction] Failed to send notification:", error);
+      }
+
+      revalidatePath("/hub/admin/users");
+      revalidatePath(`/hub/admin/users/${userId}`);
+      revalidatePath("/hub/manager/users");
+      revalidatePath(`/hub/manager/users/${userId}`);
+
+      return { success: true };
+    } catch (error) {
+      console.error("[markCancellationFeePaidAction] Error:", error);
+      return { success: false, error: (error as Error).message };
     }
   });

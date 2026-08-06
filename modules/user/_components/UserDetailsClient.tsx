@@ -15,7 +15,7 @@ import type { User } from "../user.schema";
 import type { SubscriptionWithPlan, Installment } from "../../billing/billing.types";
 import type { SlotInstanceWithDetails } from "../../scheduling/scheduling.types";
 import type { ContractWithTemplate } from "../../contract/contract.types";
-import { updateUserAction, resendCancellationFeeAction } from "../user.actions";
+import { updateUserAction, resendCancellationFeeAction, markCancellationFeePaidAction } from "../user.actions";
 import { getContractDownloadUrlAction } from "../../contract/contract.actions";
 import { updateInstallmentAction, generateInstallmentInvoiceAction, resendInstallmentReminderAction } from "../../billing/billing.actions";
 import { PersonalInfoTab } from "./userDetails/PersonalInfoTab";
@@ -214,6 +214,25 @@ export function UserDetailsClient({
     }
   };
 
+  const handleMarkCancellationFeeAsPaid = async (password: string) => {
+    if (!password) return;
+    setIsUpdating(true);
+    try {
+      const result = await markCancellationFeePaidAction({ userId: user.id, password });
+      if (result?.data?.success) {
+        notify.success("Taxa de cancelamento confirmada. Aluno desativado.");
+        setAdminPassword("");
+        router.refresh();
+      } else {
+        notify.error(result?.data?.error || "Erro ao confirmar pagamento da taxa.");
+      }
+    } catch {
+      notify.error("Erro ao processar solicitação.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleViewContract = async (id: string) => {
     setLoadingContractId(id);
     try {
@@ -397,6 +416,7 @@ export function UserDetailsClient({
               cancellationPixImage={user.cancellationPixImage}
               cancellationAmount={user.cancellationAmount}
               onResendCancellationFee={handleResendCancellationFee}
+              onMarkCancellationFeeAsPaid={handleMarkCancellationFeeAsPaid}
             />
           ) : (
             <TeacherEarningsTab
@@ -457,6 +477,9 @@ export function UserDetailsClient({
               cancellationPixImage={user.cancellationPixImage}
               cancellationAmount={user.cancellationAmount}
               onResendCancellationFee={handleResendCancellationFee}
+              onMarkCancellationFeeAsPaid={handleMarkCancellationFeeAsPaid}
+              adminPassword={adminPassword}
+              setAdminPassword={setAdminPassword}
             />
           </TabsContent>
         )}

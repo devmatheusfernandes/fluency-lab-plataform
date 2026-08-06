@@ -40,6 +40,7 @@ interface StudentPaymentTabProps {
   cancellationPixImage?: string | null;
   cancellationAmount?: number | null;
   onResendCancellationFee?: () => Promise<void>;
+  onMarkCancellationFeeAsPaid?: (password: string) => Promise<void>;
 }
 
 
@@ -61,6 +62,7 @@ export function StudentPaymentTab({
   cancellationPixImage,
   cancellationAmount,
   onResendCancellationFee,
+  onMarkCancellationFeeAsPaid,
 }: StudentPaymentTabProps) {
   const t = useTranslations("UserManagement");
 
@@ -149,6 +151,26 @@ export function StudentPaymentTab({
                     <Send className="w-3.5 h-3.5" />
                     Reenviar Taxa (E-mail / WhatsApp)
                   </Button>
+                )}
+
+                {onMarkCancellationFeeAsPaid && isAdmin && (
+                  <div className="w-full flex flex-col gap-2 pt-2 border-t border-border/50">
+                    <Input
+                      type="password"
+                      className="input h-9"
+                      placeholder={t("adminPasswordPlaceholder")}
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                    />
+                    <Button
+                      className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 font-black text-xs uppercase tracking-widest"
+                      onClick={() => onMarkCancellationFeeAsPaid(adminPassword)}
+                      disabled={isUpdating || !adminPassword}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {t("confirmAndMarkPaid")}
+                    </Button>
+                  </div>
                 )}
               </div>
             )}

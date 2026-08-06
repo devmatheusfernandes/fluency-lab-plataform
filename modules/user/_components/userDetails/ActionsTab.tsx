@@ -27,11 +27,14 @@ interface ActionsTabProps {
   cancellationPixImage?: string | null;
   cancellationAmount?: number | null;
   onResendCancellationFee?: () => Promise<void>;
+  onMarkCancellationFeeAsPaid?: (password: string) => Promise<void>;
+  adminPassword?: string;
+  setAdminPassword?: (p: string) => void;
 }
 
-export function ActionsTab({ 
-  userId, 
-  userName, 
+export function ActionsTab({
+  userId,
+  userName,
   userEmail,
   userLocale,
   userRole,
@@ -43,10 +46,16 @@ export function ActionsTab({
   cancellationPixImage,
   cancellationAmount,
   onResendCancellationFee,
+  onMarkCancellationFeeAsPaid,
+  adminPassword: adminPasswordProp,
+  setAdminPassword: setAdminPasswordProp,
 }: ActionsTabProps) {
   const t = useTranslations("UserManagement");
-  const [password, setPassword] = useState("");
+  const [localPassword, setLocalPassword] = useState("");
+  const password = adminPasswordProp ?? localPassword;
+  const setPassword = setAdminPasswordProp ?? setLocalPassword;
   const [isPending, setIsPending] = useState(false);
+  const [isConfirmingFee, setIsConfirmingFee] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [pixData, setPixData] = useState<{ pixCode: string; pixImage: string; amount?: number } | null>(null);
 
@@ -278,6 +287,37 @@ export function ActionsTab({
                       >
                         <Send className="w-3.5 h-3.5" />
                         Reenviar Taxa (E-mail / WhatsApp)
+                      </Button>
+                    </div>
+                  )}
+
+                  {onMarkCancellationFeeAsPaid && (
+                    <div className="flex flex-col gap-3 p-4 border rounded-md bg-background/50 w-full max-w-sm">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <Lock className="w-3 h-3" />
+                        {t("securityConfirmation")}
+                      </Label>
+                      <Input
+                        type="password"
+                        placeholder={t("adminPasswordPlaceholder")}
+                        className="h-9"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <Button
+                        className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 font-black text-xs uppercase tracking-widest"
+                        onClick={async () => {
+                          setIsConfirmingFee(true);
+                          try {
+                            await onMarkCancellationFeeAsPaid(password);
+                          } finally {
+                            setIsConfirmingFee(false);
+                          }
+                        }}
+                        disabled={isConfirmingFee || !password}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {t("confirmAndMarkPaid")}
                       </Button>
                     </div>
                   )}
