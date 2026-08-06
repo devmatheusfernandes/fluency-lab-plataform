@@ -62,7 +62,7 @@ export function DownloadClient({ translations: t }: DownloadClientProps) {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 px-4 py-8">
+    <div className="min-h-screen flex flex-col justify-between bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
             <header className="sticky top-0 w-full border-b bg-background">
               <div className="flex h-fit items-center justify-between">
                 <BackButton href="/" />
