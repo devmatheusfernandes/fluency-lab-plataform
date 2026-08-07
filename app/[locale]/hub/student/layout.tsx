@@ -19,9 +19,15 @@ export default async function StudentLayout({
       new Date(currentInstallment.dueDate) < todayStart);
 
   return (
-    <div className="flex flex-col min-h-full w-full">
+    // h-full (e não min-h-full) dá altura definida à cadeia. Com min-h-full a
+    // altura era automática, então páginas que usam layout de altura cheia —
+    // como o player de curso — não conseguiam resolver o próprio `h-full` e
+    // acabavam rolando por inteiro, sidebar junto.
+    <div className="flex flex-col h-full w-full">
       {isOverdue && <PaymentOverdueBanner />}
-      <div className="flex-1 w-full">
+      {/* O scroll das páginas do aluno acontece aqui. min-h-0 é o que permite
+          este filho encolher e de fato rolar em vez de esticar o pai. */}
+      <div className="flex-1 min-h-0 w-full overflow-y-auto">
         {children}
       </div>
     </div>

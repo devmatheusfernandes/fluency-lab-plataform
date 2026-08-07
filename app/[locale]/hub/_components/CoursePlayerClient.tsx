@@ -108,7 +108,10 @@ export function CoursePlayerClient({ courseData, enrollment, currentUser }: Cour
   const progressPercentage = allLessons.length > 0 ? Math.round((completedCount / allLessons.length) * 100) : 0;
 
   return (
-    <div className="flex flex-col h-full w-full bg-white dark:bg-black overflow-hidden">
+    // h-full preenche o container de scroll do hub. Sem isso o `flex-1` abaixo
+    // não tem altura de referência, o `overflow-y-auto` do <main> nunca entra
+    // em ação e a página inteira — sidebar junto — rola no container do hub.
+    <div className="flex flex-col h-full">
       <Header
         title={courseData.course.title}
         showSubHeader={false}
@@ -122,7 +125,9 @@ export function CoursePlayerClient({ courseData, enrollment, currentUser }: Cour
         className="contents"
       />
 
-      <div className="flex flex-1 overflow-hidden relative">
+      {/* min-h-0 é o que permite os filhos encolherem abaixo do conteúdo —
+          sem ele o flex se recusa a encolher e o scroll interno não acontece. */}
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <AnimatePresence>
           {isMobile && isSidebarOpen && (
             <motion.div
@@ -130,17 +135,20 @@ export function CoursePlayerClient({ courseData, enrollment, currentUser }: Cour
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsSidebarOpen(false)}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden"
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm z-20 lg:hidden"
             />
           )}
         </AnimatePresence>
 
         <aside
           className={cn(
-            "absolute inset-y-0 left-0 z-50 w-80 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-transform lg:relative lg:translate-x-0",
+            // z-30 mantém a gaveta abaixo do header (z-40) — no mobile isso é o
+            // que preserva o botão de fechar acessível enquanto ela está aberta.
+            "absolute inset-y-0 left-0 z-30 w-80 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-transform lg:relative lg:z-auto lg:translate-x-0 lg:shrink-0",
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
+          {/* Rola sozinha, independente do conteúdo da aula. */}
           <div className="flex flex-col h-full overflow-y-auto">
             <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/50">
               <div className="flex items-center justify-between mb-2">
@@ -202,7 +210,7 @@ export function CoursePlayerClient({ courseData, enrollment, currentUser }: Cour
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto bg-white dark:bg-black relative">
+        <main className="flex-1 min-w-0 min-h-0 overflow-y-auto bg-white dark:bg-black relative">
           <AnimatePresence mode="wait">
             {currentLesson ? (
               <motion.div
@@ -211,7 +219,7 @@ export function CoursePlayerClient({ courseData, enrollment, currentUser }: Cour
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
-                className="max-w-4xl mx-auto p-4 md:p-8 pb-40 space-y-8"
+                className="max-w-4xl mx-auto p-4 md:p-8 pb-12 space-y-8"
               >
                 <div className="space-y-2">
                   <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{currentLesson.title}</h1>
