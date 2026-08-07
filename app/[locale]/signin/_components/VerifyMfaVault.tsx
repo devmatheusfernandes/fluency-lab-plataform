@@ -21,7 +21,7 @@ import { verifyMfaLoginAction } from "@/modules/user/user.actions";
 interface VerifyMfaVaultProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (role?: string) => void;
   rememberMe?: boolean;
 }
 
@@ -41,7 +41,7 @@ export function VerifyMfaVault({ open, onOpenChange, onSuccess, rememberMe = fal
     setLoading(false);
 
     if (result?.data?.success) {
-      onSuccess();
+      onSuccess(result.data.role);
     } else {
       notify.error(ta(`errors.${result?.data?.error || "error"}`) || tc("error"));
     }

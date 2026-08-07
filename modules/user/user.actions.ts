@@ -91,7 +91,7 @@ export const loginAction = actionClient
         sameSite: "lax",
       });
 
-      return { success: true };
+      return { success: true, role: user?.role || "student" };
     } catch (error) {
       console.error("[loginAction] Error:", error);
       return { success: false, error: "error" };
@@ -131,7 +131,7 @@ export const verifyMfaLoginAction = actionClient
       });
       
       cookieStore.delete("mfa_pending");
-      return { success: true };
+      return { success: true, role: user?.role || "student" };
     } catch (error) {
       console.error("[verifyMfaLoginAction] Error:", error);
       return { success: false, error: "error" };

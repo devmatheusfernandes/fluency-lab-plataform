@@ -21,7 +21,7 @@ import { auth } from "./firebase";
  * The component NEVER needs try/catch — it just checks result.success.
  */
 export type AuthResult<T = undefined> =
-  | { success: true; data?: T; mfaRequired?: boolean }
+  | { success: true; data?: T; mfaRequired?: boolean; role?: string }
   | { success: false; error: string; mfaRequired?: boolean };
 
 /**
@@ -130,7 +130,8 @@ export const authClient = {
 
       return { 
         success: true, 
-        mfaRequired: !!result.data.mfaRequired 
+        mfaRequired: !!result.data.mfaRequired,
+        role: result.data.role
       };
     } catch {
       return { success: false, error: "error" };

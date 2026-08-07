@@ -49,13 +49,23 @@ export function SignInForm() {
     },
   });
 
-  const handleLoginSuccess = () => {
+  const roleRoutes: Record<string, string> = {
+    admin: "admin",
+    teacher: "teacher",
+    student: "student",
+    manager: "manager",
+  };
+
+  const handleLoginSuccess = (userRole?: string) => {
     setIsSuccess(true);
     setShowMfa(false);
+    
+    const roleSegment = userRole ? (roleRoutes[userRole] || "student") : "student";
+    const targetUrl = redirectTo || `/hub/${roleSegment}/profile`;
+
     setTimeout(() => {
-      router.push(redirectTo || `/hub`);
-      router.refresh();
-    }, 3500);
+      router.push(targetUrl);
+    }, 3000);
   };
 
   const onSubmit: SubmitHandler<SignInValues> = async (data) => {
@@ -96,7 +106,7 @@ export function SignInForm() {
       return;
     }
 
-    handleLoginSuccess();
+    handleLoginSuccess(sessionResult.role);
   };
 
   const handleGoogleSignIn = async () => {
@@ -135,7 +145,7 @@ export function SignInForm() {
     }
 
     notify.success(t("welcomeTitle") || "Login bem-sucedido!");
-    handleLoginSuccess();
+    handleLoginSuccess(sessionResult.role);
   };
 
   return (
