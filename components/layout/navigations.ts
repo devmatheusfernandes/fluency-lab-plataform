@@ -13,6 +13,7 @@ import { MenuItemType } from "@/components/layout/types";
 import { UserRoles, hasPermission, type UserRoleInfo } from "@/lib/rbac";
 import { FileTextIcon } from "@/components/animated-icons/file-text";
 import { MessageSquareIcon } from "@/components/animated-icons/message-square";
+import { BookmarkIcon } from "@/components/animated-icons/bookmark";
 import { GraduationCapIcon } from "../animated-icons/graduation-cap";
 
 const adminItems: MenuItemType[] = [
@@ -102,6 +103,13 @@ const adminItems: MenuItemType[] = [
         iconProps: { size: 20 },
     },
     {
+        href: "/admin/docs",
+        label: "Central de Ajuda",
+        labelKey: "docs",
+        Icon: BookmarkIcon,
+        iconProps: { size: 20 },
+    },
+    {
         href: "/admin/settings",
         label: "Configurações",
         labelKey: "settings",
@@ -151,6 +159,13 @@ const teacherItems: MenuItemType[] = [
         permission: "material.view",
     },
     {
+        href: "/teacher/docs",
+        label: "Central de Ajuda",
+        labelKey: "docs",
+        Icon: BookmarkIcon,
+        iconProps: { size: 20 },
+    },
+    {
         href: "/teacher/settings",
         label: "Configurações",
         labelKey: "settings",
@@ -195,6 +210,13 @@ const studentItems: MenuItemType[] = [
         label: "Imersão",
         labelKey: "immersion",
         Icon: WavesLadderIcon,
+        iconProps: { size: 20 },
+    },
+    {
+        href: "/student/docs",
+        label: "Central de Ajuda",
+        labelKey: "docs",
+        Icon: BookmarkIcon,
         iconProps: { size: 20 },
     },
     {
@@ -253,6 +275,13 @@ const managerItems: MenuItemType[] = [
         Icon: CircleCheckIcon,
         iconProps: { size: 20 },
         permission: "report.view.limited",
+    },
+    {
+        href: "/manager/docs",
+        label: "Central de Ajuda",
+        labelKey: "docs",
+        Icon: BookmarkIcon,
+        iconProps: { size: 20 },
     },
     {
         href: "/manager/settings",
