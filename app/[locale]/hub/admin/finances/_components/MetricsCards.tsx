@@ -17,12 +17,12 @@ interface MetricsCardsProps {
   currentMonth: number | "all";
 }
 
-export function MetricsCards({ metrics, monthlyBreakdown }: MetricsCardsProps) {
+export function MetricsCards({ metrics, monthlyBreakdown, currentMonth }: MetricsCardsProps) {
   const t = useTranslations("AdminFinances.metrics");
   const format = useFormatter();
 
-  const currentMonthIndex = new Date().getMonth();
-  const currentMonthData = monthlyBreakdown[currentMonthIndex] ?? null;
+  const selectedMonthIndex = currentMonth === "all" ? new Date().getMonth() : currentMonth;
+  const currentMonthData = monthlyBreakdown[selectedMonthIndex] ?? null;
 
   const cards = [
     {
@@ -32,9 +32,9 @@ export function MetricsCards({ metrics, monthlyBreakdown }: MetricsCardsProps) {
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
       details: [
-        { label: t("installments"), value: metrics.revenue.installments },
-        { label: t("extraRevenue"), value: metrics.revenue.extra },
-        { label: t("totalPeriod"), value: metrics.revenue.total, isTotal: true },
+        { label: t("installments"), value: currentMonthData?.installments ?? 0 },
+        { label: t("extraRevenue"), value: currentMonthData?.extraRevenue ?? 0 },
+        { label: t("monthlyTotal"), value: currentMonthData?.revenue ?? 0, isTotal: true },
       ],
     },
     {
@@ -44,18 +44,21 @@ export function MetricsCards({ metrics, monthlyBreakdown }: MetricsCardsProps) {
       color: "text-rose-500",
       bgColor: "bg-rose-500/10",
       details: [
-        { label: t("teacherPayouts"), value: metrics.expenses.payouts },
-        { label: t("extraExpenses"), value: metrics.expenses.extra },
-        { label: t("totalPeriod"), value: metrics.expenses.total, isTotal: true },
+        { label: t("teacherPayouts"), value: currentMonthData?.teacherPayouts ?? 0 },
+        { label: t("aiCosts"), value: currentMonthData?.aiCost ?? 0 },
+        { label: t("extraExpenses"), value: currentMonthData?.extraExpenses ?? 0 },
+        { label: t("monthlyTotal"), value: currentMonthData?.expenses ?? 0, isTotal: true },
       ],
     },
     {
       title: t("netProfit"),
-      value: metrics.netProfit,
+      value: currentMonthData?.netProfit ?? 0,
       icon: Wallet,
-      color: metrics.netProfit >= 0 ? "text-blue-500" : "text-amber-500",
-      bgColor: metrics.netProfit >= 0 ? "bg-blue-500/10" : "bg-amber-500/10",
+      color: (currentMonthData?.netProfit ?? 0) >= 0 ? "text-blue-500" : "text-amber-500",
+      bgColor: (currentMonthData?.netProfit ?? 0) >= 0 ? "bg-blue-500/10" : "bg-amber-500/10",
       details: currentMonthData ? [
+        { label: t("revenueMonthly"), value: currentMonthData.revenue },
+        { label: t("expensesMonthly"), value: currentMonthData.expenses },
         { label: t("monthlyTotal"), value: currentMonthData.netProfit, isTotal: true }
       ] : [],
     },

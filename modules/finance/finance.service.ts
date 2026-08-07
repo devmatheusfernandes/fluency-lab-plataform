@@ -11,7 +11,59 @@ import { transactionsTable } from "./finance.schema";
 import { and, between, eq, inArray, sql } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
 import { env } from "@/env";
-import { UnifiedTransaction } from "./finance.types";
+import { UnifiedTransaction, TeacherPayoutProjection, AIExpenseProjection } from "./finance.types";
+import { slotInstances } from "../scheduling/scheduling.schema";
+
+export function calculateTeacherPayoutProjection(classes: Array<{ status?: string; teacherHourlyRate?: number | null; teacher?: { teacherHourlyRate?: number | null } }>): TeacherPayoutProjection {
+  const scheduledAmount = classes.reduce((sum, cls) => {
+    const status = cls.status ?? "scheduled";
+    if (status !== "scheduled") return sum;
+    const rate = cls.teacherHourlyRate ?? cls.teacher?.teacherHourlyRate ?? 0;
+    return sum + rate;
+  }, 0);
+
+  const completedOrNoShowAmount = classes.reduce((sum, cls) => {
+    const status = cls.status ?? "scheduled";
+    if (status !== "completed" && status !== "no-show") return sum;
+    const rate = cls.teacherHourlyRate ?? cls.teacher?.teacherHourlyRate ?? 0;
+    return sum + rate;
+  }, 0);
+
+  return {
+    classCount: classes.length,
+    projectedAmount: scheduledAmount + completedOrNoShowAmount,
+    completedOrNoShowAmount,
+    scheduledAmount,
+  };
+}
+
+export function estimateAICostFromUsage(input: {
+  modelName?: string;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidateTokenCount?: number;
+    totalTokenCount?: number;
+  };
+}): number {
+  const promptTokens = input.usageMetadata?.promptTokenCount ?? 0;
+  const completionTokens = input.usageMetadata?.candidateTokenCount ?? input.usageMetadata?.totalTokenCount ?? 0;
+  const totalTokens = input.usageMetadata?.totalTokenCount ?? promptTokens + completionTokens;
+
+  if (totalTokens <= 0) return 0;
+
+  const model = input.modelName?.toLowerCase() ?? "";
+  const rates = {
+    "gemini-2.5-flash": { input: 0.00015, output: 0.0006 },
+    "gemini-2.5-pro": { input: 0.000625, output: 0.0025 },
+    default: { input: 0.0003, output: 0.0012 },
+  } as const;
+
+  const selected = model.includes("pro") ? rates["gemini-2.5-pro"] : (model.includes("flash") ? rates["gemini-2.5-flash"] : rates.default);
+  const estimatedCost = ((promptTokens / 1_000_000) * selected.input) + ((completionTokens / 1_000_000) * selected.output);
+
+  return Math.max(1, Math.round(estimatedCost * 100_000_000));
+}
+
 
 
 
@@ -38,7 +90,15 @@ export const financeService = {
       start,
       end,
     });
-    const totalExpenses = teacherPayouts + extraExpenses;
+    const aiCostEstimate = estimateAICostFromUsage({
+      modelName: "gemini-2.5-flash",
+      usageMetadata: {
+        promptTokenCount: 0,
+        candidateTokenCount: 0,
+        totalTokenCount: 0,
+      },
+    });
+    const totalExpenses = teacherPayouts + extraExpenses + aiCostEstimate;
 
     // 3. Despesas Dedutíveis
     const extraDeductible = await financeRepository.getTransactionsTotal({
@@ -48,7 +108,7 @@ export const financeService = {
       end,
       deductible: true,
     });
-    const totalDeductible = teacherPayouts + extraDeductible;
+    const totalDeductible = teacherPayouts + extraDeductible + aiCostEstimate;
 
     // 4. Configuração Fiscal & IRPF
     const config = await financeRepository.getFiscalConfigByYear(year);
@@ -81,6 +141,7 @@ export const financeService = {
         payouts: teacherPayouts,
         extra: extraExpenses,
         deductible: totalDeductible,
+        ai: aiCostEstimate,
       },
       fiscal: {
         exemptProfit,
@@ -104,19 +165,53 @@ export const financeService = {
       end = endOfYear(new Date(year, 0, 1));
     }
 
-    const [installmentsForecast, pendingExpenses] = await Promise.all([
+    const [installmentsForecast, pendingExpenses, scheduledClasses] = await Promise.all([
       billingService.getRevenueForecast(start, end),
       financeRepository.getTransactionsTotal({
         type: "expense",
         status: "pending",
         start,
         end,
+      }),
+      db.query.slotInstances.findMany({
+        where: and(
+          between(slotInstances.startAt, start, end),
+          inArray(slotInstances.status, ["scheduled", "completed", "no-show"])
+        ),
+        with: {
+          teacher: {
+            columns: {
+              teacherHourlyRate: true,
+            },
+          },
+        },
       })
     ]);
+
+    const teacherPayoutProjection = calculateTeacherPayoutProjection(scheduledClasses.map((cls) => ({
+      status: cls.status,
+      teacherHourlyRate: cls.teacherHourlyRate,
+      teacher: cls.teacher ? { teacherHourlyRate: cls.teacher.teacherHourlyRate } : undefined,
+    })));
+
+    const aiCost = estimateAICostFromUsage({
+      modelName: "gemini-2.5-flash",
+      usageMetadata: {
+        promptTokenCount: 0,
+        candidateTokenCount: 0,
+        totalTokenCount: 0,
+      },
+    });
+    const aiExpenseProjection: AIExpenseProjection = {
+      estimatedCost: aiCost,
+      source: "estimate",
+    };
 
     return {
       installments: installmentsForecast,
       pendingExpenses,
+      teacherPayoutProjection,
+      aiExpenseProjection,
     };
   },
 
@@ -154,16 +249,32 @@ export const financeService = {
       const start = startOfMonth(new Date(year, month, 1));
       const end = endOfMonth(new Date(year, month, 1));
 
-      const revenue = await billingService.getTotalRevenue(start, end) +
-        await financeRepository.getTransactionsTotal({ type: "income", status: "paid", start, end });
+      const installments = await billingService.getTotalRevenue(start, end);
+      const extraRevenue = await financeRepository.getTransactionsTotal({ type: "income", status: "paid", start, end });
+      const revenue = installments + extraRevenue;
 
-      const expenses = await payoutService.getTotalPayouts(start, end) +
-        await financeRepository.getTransactionsTotal({ type: "expense", status: "paid", start, end });
+      const teacherPayouts = await payoutService.getTotalPayouts(start, end);
+      const extraExpenses = await financeRepository.getTransactionsTotal({ type: "expense", status: "paid", start, end });
+      const aiCostEstimate = estimateAICostFromUsage({
+        modelName: "gemini-2.5-flash",
+        usageMetadata: {
+          promptTokenCount: 0,
+          candidateTokenCount: 0,
+          totalTokenCount: 0,
+        },
+      });
+
+      const expenses = teacherPayouts + extraExpenses + aiCostEstimate;
 
       return {
         month: month + 1,
         revenue,
+        installments,
+        extraRevenue,
         expenses,
+        teacherPayouts,
+        extraExpenses,
+        aiCost: aiCostEstimate,
         netProfit: revenue - expenses,
       };
     }));
@@ -382,9 +493,10 @@ export const financeService = {
         stripePending = usdPending;
         stripeStatus = "ok";
       } catch (error) {
-        console.error("[financeService.getGatewayBalances] Stripe error:", error);
+        const message = error instanceof Error ? error.message : "Erro ao consultar saldo Stripe";
+        console.warn("[financeService.getGatewayBalances] Stripe error:", message);
         stripeStatus = "error";
-        stripeErrorMessage = error instanceof Error ? error.message : "Erro ao consultar saldo Stripe";
+        stripeErrorMessage = message;
       }
     }
 

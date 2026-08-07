@@ -23,15 +23,40 @@ export interface FinanceMetrics {
   netProfit: number;
 }
 
+export interface TeacherPayoutProjection {
+  classCount: number;
+  projectedAmount: number;
+  completedOrNoShowAmount: number;
+  scheduledAmount: number;
+}
+
+export interface AIExpenseProjection {
+  estimatedCost: number;
+  source: "usage" | "estimate";
+  details?: {
+    model: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}
+
 export interface FinanceForecast {
   installments: number;
   pendingExpenses: number;
+  teacherPayoutProjection?: TeacherPayoutProjection;
+  aiExpenseProjection?: AIExpenseProjection;
 }
 
 export interface MonthlyBreakdownItem {
   month: number;
   revenue: number;
+  installments: number;
+  extraRevenue: number;
   expenses: number;
+  teacherPayouts: number;
+  extraExpenses: number;
+  aiCost: number;
   netProfit: number;
 }
 

@@ -18,6 +18,7 @@ import { EditTransactionVault } from "./EditTransactionVault";
 import { Button } from "@/components/ui/button";
 import { Transaction } from "@/modules/finance/finance.schema";
 import { UnifiedTransaction } from "@/modules/finance/finance.types";
+import { normalizeFinanceDate } from "@/modules/finance/finance.utils";
 
 interface TransactionsTableProps {
   transactions: UnifiedTransaction[];
@@ -76,7 +77,12 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
               }}
             >
               <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                {format.dateTime(new Date(tx.date), { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                {format.dateTime(normalizeFinanceDate(tx.date) ?? new Date(tx.date), {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  timeZone: 'UTC',
+                })}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
@@ -202,7 +208,12 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
 
             <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2.5">
               <span className="text-xs text-muted-foreground">
-                {format.dateTime(new Date(tx.date), { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                {format.dateTime(normalizeFinanceDate(tx.date) ?? new Date(tx.date), {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  timeZone: 'UTC',
+                })}
               </span>
               <div className="flex items-center gap-2">
                 {tx.attachmentUrl && (
