@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Logo from "@/public/brand/logo.png";
-import { ArrowUp, MessageCircle, AtSign, Mail, MessageSquare } from "lucide-react";
+import { ArrowUp, MessageCircle, AtSign, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { useForm } from "react-hook-form";

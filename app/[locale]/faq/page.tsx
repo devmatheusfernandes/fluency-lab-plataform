@@ -11,12 +11,10 @@ type Props = {
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "FaqPage" });
 };
 
 export default async function FaqPage({ params }: Props) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "FaqPage" });
   const settings = await settingsService.getSettings();
 
   return (

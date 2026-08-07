@@ -17,7 +17,7 @@ interface MetricsCardsProps {
   currentMonth: number | "all";
 }
 
-export function MetricsCards({ metrics, monthlyBreakdown, currentMonth }: MetricsCardsProps) {
+export function MetricsCards({ metrics, monthlyBreakdown }: MetricsCardsProps) {
   const t = useTranslations("AdminFinances.metrics");
   const format = useFormatter();
 
