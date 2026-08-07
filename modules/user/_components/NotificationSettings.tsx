@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { updateNotificationPrefsAction } from "@/modules/user/user.actions";
 import { notify } from "@/components/ui/toaster";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Zap, Map as MapIcon, Calendar, Megaphone, MessageCircle } from "lucide-react";
+import { Bell, Zap, Map as MapIcon, Calendar, Megaphone, MessageCircle, CheckCircle2, AlertTriangle, Clock, AlertCircle, CalendarDays } from "lucide-react";
 import type { NotificationPrefs } from "@/modules/user/user.schema";
 import { useTranslations } from "next-intl";
 
@@ -30,6 +30,8 @@ export function NotificationSettings({ initialPrefs, role }: NotificationSetting
       }
     });
   };
+
+  const isAdminOrManager = role === "admin" || role === "manager";
 
   return (
     <div className="card p-6 space-y-6">
@@ -114,23 +116,117 @@ export function NotificationSettings({ initialPrefs, role }: NotificationSetting
           />
         </div>
 
-        {(role === "admin" || role === "manager") && (
-          <div className="flex items-center justify-between space-x-2">
-            <div className="flex flex-col space-y-1">
-              <div className="flex items-center gap-2 font-bold">
-                <MessageCircle className="w-4 h-4 text-green-500" />
-                {t("notifications.whatsapp")}
+        {isAdminOrManager && (
+          <>
+            <div className="border-t pt-6">
+              <h4 className="font-bold text-md text-foreground mb-4">
+                Notificações de Gestão e Operações
+              </h4>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      Pagamentos Efetuados
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Notificações in-app e push ao receber um pagamento (nome do aluno, valor e mês).
+                    </span>
+                  </div>
+                  <Switch
+                    checked={initialPrefs.paymentsMade ?? true}
+                    onCheckedChange={(val) => handleToggle("paymentsMade", val)}
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      <AlertTriangle className="w-4 h-4 text-rose-500" />
+                      Pagamentos Atrasados / Pendentes
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Alertas sobre pagamentos atrasados ou cobranças pendentes (aluno, valor e mês).
+                    </span>
+                  </div>
+                  <Switch
+                    checked={initialPrefs.paymentsOverdue ?? true}
+                    onCheckedChange={(val) => handleToggle("paymentsOverdue", val)}
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      <CalendarDays className="w-4 h-4 text-indigo-500" />
+                      Próximas Aulas / Aulas do Dia
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Avisos de aulas agendadas para o dia (professor, aluno, horário e dia).
+                    </span>
+                  </div>
+                  <Switch
+                    checked={initialPrefs.upcomingClasses ?? true}
+                    onCheckedChange={(val) => handleToggle("upcomingClasses", val)}
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      <Clock className="w-4 h-4 text-amber-500" />
+                      Aulas Pendentes
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Alertas sobre aulas aguardando confirmação ou solicitação de reagendamento.
+                    </span>
+                  </div>
+                  <Switch
+                    checked={initialPrefs.pendingClasses ?? true}
+                    onCheckedChange={(val) => handleToggle("pendingClasses", val)}
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      Aulas Não Atualizadas (Atenção)
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Notificações quando uma aula já finalizada não tiver presença/status preenchido pelo professor.
+                    </span>
+                  </div>
+                  <Switch
+                    checked={initialPrefs.unupdatedClasses ?? true}
+                    onCheckedChange={(val) => handleToggle("unupdatedClasses", val)}
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      <MessageCircle className="w-4 h-4 text-[#00a884]" />
+                      {t("notifications.whatsapp")}
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {t("notifications.whatsappDesc")}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={initialPrefs.whatsapp ?? true}
+                    onCheckedChange={(val) => handleToggle("whatsapp", val)}
+                    disabled={isPending}
+                  />
+                </div>
               </div>
-              <span className="text-sm text-muted-foreground">
-                {t("notifications.whatsappDesc")}
-              </span>
             </div>
-            <Switch
-              checked={initialPrefs.whatsapp ?? true}
-              onCheckedChange={(val) => handleToggle("whatsapp", val)}
-              disabled={isPending}
-            />
-          </div>
+          </>
         )}
       </div>
     </div>

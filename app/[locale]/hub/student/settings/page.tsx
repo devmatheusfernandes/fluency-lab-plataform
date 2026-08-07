@@ -3,7 +3,7 @@ import { adminAuth } from "@/lib/firebase-admin";
 import { userService } from "@/modules/user/user.service";
 import { redirect } from "next/navigation";
 import { SettingsPageContent } from "@/modules/user/_components/SettingsPageContent";
-import type { NotificationPrefs } from "@/modules/user/user.schema";
+import { NotificationPrefs, notificationPrefsSchema } from "@/modules/user/user.schema";
 import { getTranslations } from "next-intl/server";
 
 export default async function SettingsPage() {
@@ -15,13 +15,7 @@ export default async function SettingsPage() {
   
   if (!user) return <div>{tc("notFound")}</div>;
 
-  const prefs = (user.notificationPrefs as NotificationPrefs) || {
-    streak: true,
-    roadmap: true,
-    classes: true,
-    marketing: false,
-    whatsapp: true,
-  };
+  const prefs = notificationPrefsSchema.parse(user.notificationPrefs || {});
 
   const hasPassword = await checkUserHasPassword(sessionUser.id);
   const firebaseUser = await adminAuth.getUser(sessionUser.id);

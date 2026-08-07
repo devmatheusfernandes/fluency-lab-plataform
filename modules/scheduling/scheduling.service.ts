@@ -1583,6 +1583,7 @@ export const schedulingService = {
       body: `A aula do prof. ${teacherName} foi alterada. ${body}`,
       targetType: "role",
       targetRole: "admin",
+      category: "upcomingClasses",
       channels: { inApp: true, push: true },
     });
 
@@ -1592,6 +1593,7 @@ export const schedulingService = {
       body: `A aula do prof. ${teacherName} foi alterada. ${body}`,
       targetType: "role",
       targetRole: "manager",
+      category: "upcomingClasses",
       channels: { inApp: true, push: true },
     });
   },
@@ -1700,21 +1702,37 @@ export const schedulingService = {
 
     // Notifications
     for (const slot of overdueSlots) {
+      const teacher = await userService.getUserById(slot.teacherId);
+      const student = slot.studentId ? await userService.getUserById(slot.studentId) : null;
+      const teacherName = teacher?.name || "Professor";
+      const studentInfo = student?.name ? ` com o aluno ${student.name}` : "";
+      const dateStr = formatLocalTime(slot.startAt, "dd/MM/yyyy HH:mm");
+
       // 1. Notify Managers
       await notificationService.sendNotification({
         title: "Aula não atualizada (Atenção)",
-        body: `A aula do prof. ${slot.teacherId} em ${formatLocalTime(slot.startAt, "dd/MM HH:mm")} não foi atualizada e expirou.`,
+        body: `A aula do prof. ${teacherName}${studentInfo} em ${dateStr} não foi atualizada e expirou.`,
         targetType: "role",
         targetRole: "manager",
+        category: "unupdatedClasses",
+        channels: { inApp: true, push: true },
+      });
+
+      // 1.5. Notify Admins
+      await notificationService.sendNotification({
+        title: "Aula não atualizada (Atenção)",
+        body: `A aula do prof. ${teacherName}${studentInfo} em ${dateStr} não foi atualizada e expirou.`,
+        targetType: "role",
+        targetRole: "admin",
+        category: "unupdatedClasses",
         channels: { inApp: true, push: true },
       });
 
       // 2. Notify Teacher (InApp/Push/Email)
-      const teacher = await userService.getUserById(slot.teacherId);
       if (teacher) {
         await notificationService.sendNotification({
           title: "⚠️ Aula pendente de atualização",
-          body: `Sua aula de ${formatLocalTime(slot.startAt, "dd/MM HH:mm")} passou de 2h e não foi atualizada.`,
+          body: `Sua aula${studentInfo} de ${dateStr} passou de 2h e não foi atualizada.`,
           targetType: "specific",
           userIds: [slot.teacherId],
           channels: { inApp: true, push: true },
@@ -1723,7 +1741,7 @@ export const schedulingService = {
         if (teacher.email) {
           await communicationService.sendClassOverdueTeacherEmail(teacher.email, {
             teacherName: teacher.name || "Professor",
-            classDate: formatLocalTime(slot.startAt, "dd/MM/yyyy HH:mm"),
+            classDate: dateStr,
           });
         }
       }

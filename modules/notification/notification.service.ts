@@ -15,7 +15,7 @@ webpush.setVapidDetails(
 
 export const notificationService = {
   async sendNotification(params: SendNotificationValues) {
-    const { title, body, actionUrl, targetType, targetRole, userIds, channels, icon } = params;
+    const { title, body, actionUrl, targetType, targetRole, userIds, category, channels, icon } = params;
 
     let targetUserIds: string[] = [];
 
@@ -26,6 +26,13 @@ export const notificationService = {
       targetUserIds = await notificationRepository.findUserIdsByRole(targetRole);
     } else if (targetType === "specific" && userIds) {
       targetUserIds = userIds;
+    }
+
+    if (targetUserIds.length === 0) return;
+
+    // 1.5 Filter by notification preference if a category is specified
+    if (category) {
+      targetUserIds = await notificationRepository.filterUserIdsByPreference(targetUserIds, category);
     }
 
     if (targetUserIds.length === 0) return;

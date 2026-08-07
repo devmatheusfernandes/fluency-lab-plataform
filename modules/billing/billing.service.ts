@@ -4,7 +4,8 @@ import { createStripeCheckoutSession, stripe } from "@/lib/stripe";
 import { userService } from "../user/user.service";
 import { communicationService } from "../communication/communication.service";
 import { notificationService } from "../notification/notification.service";
-import { addMonths, startOfDay, setDate, addDays, endOfDay, endOfMonth, startOfMonth, getDate } from "date-fns";
+import { addMonths, startOfDay, setDate, addDays, endOfDay, endOfMonth, startOfMonth, getDate, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { env } from "@/env";
 import { db } from "@/lib/db";
 import { Installment, installmentsTable, Subscription, abacatePayWebhookSchema, abacatePayMetadataSchema, subscriptionsTable } from "./billing.schema";
@@ -1055,7 +1056,7 @@ export const billingService = {
           console.error("[BillingService] Failed to send confirmation email:", error);
         }
 
-        // 2. In-App and Push Notification
+        // 2. In-App and Push Notification for Student
         try {
           await notificationService.sendNotification({
             title: "✅ Pagamento confirmado!",
@@ -1066,7 +1067,36 @@ export const billingService = {
             actionUrl: "/student/billing",
           });
         } catch (error) {
-          console.error("[BillingService] Failed to send notification:", error);
+          console.error("[BillingService] Failed to send student notification:", error);
+        }
+
+        // 3. Admin & Manager Notification for Payment Received
+        try {
+          const formattedAmount = new Intl.NumberFormat("pt-BR", { style: "currency", currency: sub?.plan?.currency || "BRL" }).format(installment.amount / 100);
+          const monthStr = format(installment.dueDate, "MMMM/yyyy", { locale: ptBR });
+          const paymentBody = `Pagamento de ${formattedAmount} recebido do aluno ${student.name} (Ref: ${monthStr}).`;
+
+          await notificationService.sendNotification({
+            title: "💰 Pagamento Recebido",
+            body: paymentBody,
+            targetType: "role",
+            targetRole: "admin",
+            category: "paymentsMade",
+            channels: { inApp: true, push: true },
+            actionUrl: "/hub/admin/finances",
+          });
+
+          await notificationService.sendNotification({
+            title: "💰 Pagamento Recebido",
+            body: paymentBody,
+            targetType: "role",
+            targetRole: "manager",
+            category: "paymentsMade",
+            channels: { inApp: true, push: true },
+            actionUrl: "/hub/manager/users",
+          });
+        } catch (error) {
+          console.error("[BillingService] Failed to send admin/manager payment notification:", error);
         }
       }
     }
@@ -1292,13 +1322,41 @@ export const billingService = {
       });
 
       await notificationService.sendNotification({
-        title: "\u26A0\uFE0F Fatura em atraso",
-        body: `Aten\u00e7\u00e3o: Sua mensalidade de ${amountStr} est\u00e1 atrasada. Regularize para evitar suspens\u00e3o.`,
+        title: "⚠️ Fatura em atraso",
+        body: `Atenção: Sua mensalidade de ${amountStr} está atrasada. Regularize para evitar suspensão.`,
         targetType: "specific",
         userIds: [student.id],
         channels: { inApp: true, push: true },
         actionUrl: "/hub/student/payments",
       });
+
+      // Notify Admin & Manager about overdue payment
+      try {
+        const monthStr = format(inst.dueDate, "MMMM/yyyy", { locale: ptBR });
+        const overdueBody = `A mensalidade de ${amountStr} do aluno ${student.name} (Venc: ${format(inst.dueDate, "dd/MM")} - ${monthStr}) está em atraso.`;
+
+        await notificationService.sendNotification({
+          title: "⚠️ Mensalidade Atrasada",
+          body: overdueBody,
+          targetType: "role",
+          targetRole: "admin",
+          category: "paymentsOverdue",
+          channels: { inApp: true, push: true },
+          actionUrl: "/hub/admin/finances",
+        });
+
+        await notificationService.sendNotification({
+          title: "⚠️ Mensalidade Atrasada",
+          body: overdueBody,
+          targetType: "role",
+          targetRole: "manager",
+          category: "paymentsOverdue",
+          channels: { inApp: true, push: true },
+          actionUrl: "/hub/manager/users",
+        });
+      } catch (err) {
+        console.error("[BillingService] Failed to send overdue admin/manager notification:", err);
+      }
 
       // WhatsApp
       if (student.cellphone && inst.pixPayload) {

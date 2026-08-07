@@ -78,6 +78,11 @@ export const usersTable = pgTable("users", {
     classes: true,
     marketing: false,
     whatsapp: true,
+    paymentsMade: true,
+    paymentsOverdue: true,
+    upcomingClasses: true,
+    pendingClasses: true,
+    unupdatedClasses: true,
   }),
 
   // Payment
@@ -169,6 +174,11 @@ export const notificationPrefsSchema = z.object({
   classes: z.boolean().default(true),
   marketing: z.boolean().default(false),
   whatsapp: z.boolean().default(true),
+  paymentsMade: z.boolean().default(true),
+  paymentsOverdue: z.boolean().default(true),
+  upcomingClasses: z.boolean().default(true),
+  pendingClasses: z.boolean().default(true),
+  unupdatedClasses: z.boolean().default(true),
 });
 
 // Form Schemas

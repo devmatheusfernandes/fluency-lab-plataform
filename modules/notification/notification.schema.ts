@@ -50,6 +50,20 @@ export const sendNotificationSchema = z.object({
   targetType: z.enum(["all", "role", "specific"]),
   targetRole: z.enum(["admin", "teacher", "student", "manager"]).optional(),
   userIds: z.array(z.string()).optional(),
+  category: z
+    .enum([
+      "streak",
+      "roadmap",
+      "classes",
+      "marketing",
+      "whatsapp",
+      "paymentsMade",
+      "paymentsOverdue",
+      "upcomingClasses",
+      "pendingClasses",
+      "unupdatedClasses",
+    ])
+    .optional(),
   channels: z.object({
     push: z.boolean().default(true),
     inApp: z.boolean().default(true),

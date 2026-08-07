@@ -87,6 +87,21 @@ export const notificationRepository = {
     return result.map((r) => r.id);
   },
 
+  async filterUserIdsByPreference(userIds: string[], category: string) {
+    if (userIds.length === 0) return [];
+    const users = await db
+      .select({ id: usersTable.id, notificationPrefs: usersTable.notificationPrefs })
+      .from(usersTable)
+      .where(inArray(usersTable.id, userIds));
+
+    return users
+      .filter((user) => {
+        const prefs = (user.notificationPrefs as Record<string, boolean>) || {};
+        return prefs[category] !== false;
+      })
+      .map((user) => user.id);
+  },
+
   async findGlobalHistory(limit = 100) {
     return db
       .select({

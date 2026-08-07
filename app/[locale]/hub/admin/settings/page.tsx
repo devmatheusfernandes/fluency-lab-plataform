@@ -3,7 +3,7 @@ import { adminAuth } from "@/lib/firebase-admin";
 import { userService } from "@/modules/user/user.service";
 import { redirect } from "next/navigation";
 import { SettingsPageContent } from "@/modules/user/_components/SettingsPageContent";
-import type { NotificationPrefs } from "@/modules/user/user.schema";
+import { notificationPrefsSchema } from "@/modules/user/user.schema";
 import { getTranslations } from "next-intl/server";
 import { settingsService } from "@/modules/settings/settings.service";
 
@@ -16,13 +16,7 @@ export default async function AdminSettingsPage() {
 
   if (!user) return <div>{tc("notFound")}</div>;
 
-  const prefs = (user.notificationPrefs as NotificationPrefs) || {
-    streak: true,
-    roadmap: true,
-    classes: true,
-    marketing: false,
-    whatsapp: true,
-  };
+  const prefs = notificationPrefsSchema.parse(user.notificationPrefs || {});
 
   const [hasPassword, firebaseUser, systemSettings] = await Promise.all([
     checkUserHasPassword(sessionUser.id),
