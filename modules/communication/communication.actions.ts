@@ -253,6 +253,19 @@ export const getWhatsAppAllowedTemplatesAction = managerAction
     }
   });
 
+export const resendWhatsAppMessageAction = managerAction
+  .metadata({ name: "resendWhatsAppMessage" })
+  .schema(z.object({ messageId: z.string() }))
+  .action(async ({ parsedInput }) => {
+    try {
+      const result = await communicationService.resendWhatsAppMessage(parsedInput.messageId);
+      return { success: true, data: result, error: null as string | null };
+    } catch (err) {
+      return { success: false, data: null, error: err instanceof Error ? err.message : "Erro ao reenviar mensagem" };
+    }
+  });
+
+
 
 
 

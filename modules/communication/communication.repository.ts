@@ -149,6 +149,58 @@ export const communicationRepository = {
       .where(eq(whatsappMessagesTable.id, messageId));
   },
 
+  async findMessageById(messageId: string) {
+    return db.query.whatsappMessagesTable.findFirst({
+      where: eq(whatsappMessagesTable.id, messageId),
+    });
+  },
+
+  async replaceMessageIdAndStatus(
+    oldMessageId: string,
+    newMessageId: string,
+    status: "sent" | "delivered" | "read" | "failed",
+    extraMetadata?: unknown
+  ) {
+    const existing = await db.query.whatsappMessagesTable.findFirst({
+      where: eq(whatsappMessagesTable.id, oldMessageId),
+    });
+
+    if (!existing) return null;
+
+    if (oldMessageId === newMessageId) {
+      const [updated] = await db
+        .update(whatsappMessagesTable)
+        .set({
+          status,
+          ...(extraMetadata !== undefined ? { metadata: extraMetadata } : {}),
+          createdAt: new Date(),
+        })
+        .where(eq(whatsappMessagesTable.id, oldMessageId))
+        .returning();
+      return updated;
+    }
+
+    // Se o ID mudou (ex: de um ID de falha temporário para o ID wamid... da Meta),
+    // removemos a mensagem antiga com ID temporário e inserimos a nova
+    await db.delete(whatsappMessagesTable).where(eq(whatsappMessagesTable.id, oldMessageId));
+
+    const [inserted] = await db
+      .insert(whatsappMessagesTable)
+      .values({
+        id: newMessageId,
+        conversationId: existing.conversationId,
+        content: existing.content,
+        type: existing.type,
+        direction: existing.direction,
+        status,
+        metadata: extraMetadata !== undefined ? (extraMetadata as Record<string, unknown>) : existing.metadata,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    return inserted;
+  },
+
   async updateContactName(conversationId: string, contactName: string) {
     await db
       .update(whatsappConversationsTable)

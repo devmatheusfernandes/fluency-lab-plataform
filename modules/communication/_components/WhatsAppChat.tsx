@@ -959,7 +959,14 @@ export function WhatsAppChat({ currentUser }: WhatsAppChatProps) {
                               }
                             })()
                           )}
-                          <MessageBubble msg={msg} templates={templates} />
+                          <MessageBubble
+                            msg={msg}
+                            templates={templates}
+                            onResendSuccess={() => {
+                              mutateMessages();
+                              mutateConvs();
+                            }}
+                          />
                         </div>
                       );
                     })

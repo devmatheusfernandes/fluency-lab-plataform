@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import { WhatsAppMessage, WhatsAppTemplate } from "../communication.types";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { MessageCircle, Check, CheckCheck, FileText, Download, X, Film } from "lucide-react";
+import { MessageCircle, Check, CheckCheck, FileText, Download, X, Film, RotateCcw, AlertCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { notify } from "@/components/ui/toaster";
+import { resendWhatsAppMessageAction } from "../communication.actions";
 
 interface MediaMetadata {
   mediaId?: string;
@@ -41,12 +42,35 @@ interface WhatsAppMessageMetadata {
 interface MessageBubbleProps {
   msg: WhatsAppMessage;
   templates?: WhatsAppTemplate[];
+  onResendSuccess?: () => void;
 }
 
-export function MessageBubble({ msg, templates = [] }: MessageBubbleProps) {
+export function MessageBubble({ msg, templates = [], onResendSuccess }: MessageBubbleProps) {
   const isOut = msg.direction === "outbound";
   const isTemplate = msg.content?.startsWith("[Template:");
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
+  const handleResend = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isResending) return;
+
+    setIsResending(true);
+    try {
+      const res = await resendWhatsAppMessageAction({ messageId: msg.id });
+      if (res?.data?.success) {
+        notify.success("Mensagem reenviada com sucesso!");
+        onResendSuccess?.();
+      } else {
+        notify.error(res?.data?.error || "Falha ao reenviar mensagem.");
+      }
+    } catch (err) {
+      console.error("[MessageBubble] Error resending message:", err);
+      notify.error("Erro técnico ao reenviar mensagem.");
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLightboxOpen) return;
@@ -337,7 +361,22 @@ export function MessageBubble({ msg, templates = [] }: MessageBubbleProps) {
             ) : msg.status === "sent" ? (
               <Check className="w-3.5 h-3.5 text-muted-foreground opacity-60" />
             ) : msg.status === "failed" ? (
-              <span className="text-red-500 text-[10px] font-bold">Falhou</span>
+              <div className="flex items-center gap-1.5 ml-1">
+                <span className="text-red-500 text-[10px] font-bold inline-flex items-center gap-0.5">
+                  <AlertCircle className="w-3 h-3 text-red-500 shrink-0" />
+                  Falhou
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={isResending}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-500/15 hover:bg-red-500/25 text-red-600 dark:text-red-400 font-bold text-[10px] border border-red-500/30 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Tentar reenviar mensagem via WhatsApp"
+                >
+                  <RotateCcw className={cn("w-3 h-3", isResending && "animate-spin")} />
+                  {isResending ? "Reenviando..." : "Reenviar"}
+                </button>
+              </div>
             ) : (
               <Check className="w-3.5 h-3.5 text-muted-foreground opacity-30 animate-pulse" />
             )

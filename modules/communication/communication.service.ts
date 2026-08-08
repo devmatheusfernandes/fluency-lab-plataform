@@ -5,6 +5,8 @@ import { decrypt } from "@/lib/cryptography";
 import { whatsappConversationsTable } from "./communication.schema";
 import { adminRtdb } from "@/lib/firebase-admin";
 import { settingsService } from "@/modules/settings/settings.service";
+import { db } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 
 import { render } from "@react-email/render";
@@ -805,6 +807,9 @@ export class CommunicationService {
   /**
    * Método base para envio de templates do WhatsApp.
    */
+  /**
+   * Método base para envio de templates do WhatsApp.
+   */
   async sendWhatsAppTemplate(options: SendWhatsAppTemplateOptions): Promise<WhatsAppResponse | null> {
     const { to, templateName, components, languageCode = "pt_BR" } = options;
 
@@ -823,61 +828,62 @@ export class CommunicationService {
       }
     });
 
-    if (response?.messages?.[0]?.id) {
-      // Tentar interpolar o conteúdo para salvar de forma amigável no banco
-      let textToSave = `[Template: ${templateName}]`;
-      try {
-        const templates = await this.getWhatsAppTemplates();
-        const template = templates.find(t => t.name === templateName);
-        if (template) {
-          const bodyComp = template.components.find((c) => c.type === "BODY" || (c.type as string) === "body");
-          if (bodyComp?.text) {
-            let interpolated = bodyComp.text;
-            const bodyParams = components?.find((c) => c.type === "body" || (c.type as string) === "BODY")?.parameters || [];
-            bodyParams.forEach((param, idx: number) => {
-              interpolated = interpolated.replace(new RegExp(`\\{\\{${idx + 1}\\}\\}`, 'g'), param.text || '');
-            });
-            textToSave = interpolated;
-          }
+    // Tentar interpolar o conteúdo para salvar de forma amigável no banco
+    let textToSave = `[Template: ${templateName}]`;
+    try {
+      const templates = await this.getWhatsAppTemplates();
+      const template = templates.find(t => t.name === templateName);
+      if (template) {
+        const bodyComp = template.components.find((c) => c.type === "BODY" || (c.type as string) === "body");
+        if (bodyComp?.text) {
+          let interpolated = bodyComp.text;
+          const bodyParams = components?.find((c) => c.type === "body" || (c.type as string) === "BODY")?.parameters || [];
+          bodyParams.forEach((param, idx: number) => {
+            interpolated = interpolated.replace(new RegExp(`\\{\\{${idx + 1}\\}\\}`, 'g'), param.text || '');
+          });
+          textToSave = interpolated;
         }
-      } catch (err) {
-        console.error("[sendWhatsAppTemplate] Error interpolating template text:", err);
       }
+    } catch (err) {
+      console.error("[sendWhatsAppTemplate] Error interpolating template text:", err);
+    }
 
-      // Persistir no banco
-      let conversation = await communicationRepository.findConversationByWaId(formattedPhone);
-      if (!conversation) {
-        const user = await communicationRepository.findUserByPhone(formattedPhone);
-        conversation = await communicationRepository.createConversation({
-          waId: formattedPhone,
-          studentId: user?.id,
-          lastMessageContent: textToSave,
-          lastMessageAt: new Date(),
-        });
-      } else {
-        await communicationRepository.updateConversation(conversation.id, {
-          lastMessageContent: textToSave,
-          lastMessageAt: new Date(),
-        });
-      }
-
-      await communicationRepository.saveMessage({
-        id: response.messages[0].id,
-        conversationId: conversation.id,
-        content: textToSave,
-        type: "template",
-        direction: "outbound",
-        status: "sent",
-        metadata: { components, templateName, languageCode }, // Salva metadados
+    let conversation = await communicationRepository.findConversationByWaId(formattedPhone);
+    if (!conversation) {
+      const user = await communicationRepository.findUserByPhone(formattedPhone);
+      conversation = await communicationRepository.createConversation({
+        waId: formattedPhone,
+        studentId: user?.id,
+        lastMessageContent: textToSave,
+        lastMessageAt: new Date(),
       });
+    } else {
+      await communicationRepository.updateConversation(conversation.id, {
+        lastMessageContent: textToSave,
+        lastMessageAt: new Date(),
+      });
+    }
 
-      // RTDB Signal for real-time update
-      try {
-        await adminRtdb.ref(`whatsapp_sync_signal/messages/${conversation.id}`).set(Date.now());
-        await adminRtdb.ref(`whatsapp_sync_signal/conversations`).set(Date.now());
-      } catch (rtdbErr) {
-        console.error("[sendWhatsAppTemplate] RTDB sync signal error:", rtdbErr);
-      }
+    const isSuccess = !!response?.messages?.[0]?.id;
+    const msgId = isSuccess ? response!.messages[0].id : `failed_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const status = isSuccess ? "sent" : "failed";
+
+    await communicationRepository.saveMessage({
+      id: msgId,
+      conversationId: conversation.id,
+      content: textToSave,
+      type: "template",
+      direction: "outbound",
+      status: status,
+      metadata: { components, templateName, languageCode }, // Salva metadados
+    });
+
+    // RTDB Signal for real-time update
+    try {
+      await adminRtdb.ref(`whatsapp_sync_signal/messages/${conversation.id}`).set(Date.now());
+      await adminRtdb.ref(`whatsapp_sync_signal/conversations`).set(Date.now());
+    } catch (rtdbErr) {
+      console.error("[sendWhatsAppTemplate] RTDB sync signal error:", rtdbErr);
     }
 
     return response;
@@ -896,39 +902,41 @@ export class CommunicationService {
       text: { body: text }
     });
 
-    if (response?.messages?.[0]?.id) {
-      let conversation = await communicationRepository.findConversationByWaId(formattedPhone);
-      if (!conversation) {
-        const user = await communicationRepository.findUserByPhone(formattedPhone);
-        conversation = await communicationRepository.createConversation({
-          waId: formattedPhone,
-          studentId: user?.id,
-          lastMessageContent: text,
-          lastMessageAt: new Date(),
-        });
-      } else {
-        await communicationRepository.updateConversation(conversation.id, {
-          lastMessageContent: text,
-          lastMessageAt: new Date(),
-        });
-      }
-
-      await communicationRepository.saveMessage({
-        id: response.messages[0].id,
-        conversationId: conversation.id,
-        content: text,
-        type: "text",
-        direction: "outbound",
-        status: "sent",
+    let conversation = await communicationRepository.findConversationByWaId(formattedPhone);
+    if (!conversation) {
+      const user = await communicationRepository.findUserByPhone(formattedPhone);
+      conversation = await communicationRepository.createConversation({
+        waId: formattedPhone,
+        studentId: user?.id,
+        lastMessageContent: text,
+        lastMessageAt: new Date(),
       });
+    } else {
+      await communicationRepository.updateConversation(conversation.id, {
+        lastMessageContent: text,
+        lastMessageAt: new Date(),
+      });
+    }
 
-      // RTDB Signal for real-time update
-      try {
-        await adminRtdb.ref(`whatsapp_sync_signal/messages/${conversation.id}`).set(Date.now());
-        await adminRtdb.ref(`whatsapp_sync_signal/conversations`).set(Date.now());
-      } catch (rtdbErr) {
-        console.error("[sendWhatsAppTextMessage] RTDB sync signal error:", rtdbErr);
-      }
+    const isSuccess = !!response?.messages?.[0]?.id;
+    const msgId = isSuccess ? response!.messages[0].id : `failed_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const status = isSuccess ? "sent" : "failed";
+
+    await communicationRepository.saveMessage({
+      id: msgId,
+      conversationId: conversation.id,
+      content: text,
+      type: "text",
+      direction: "outbound",
+      status: status,
+    });
+
+    // RTDB Signal for real-time update
+    try {
+      await adminRtdb.ref(`whatsapp_sync_signal/messages/${conversation.id}`).set(Date.now());
+      await adminRtdb.ref(`whatsapp_sync_signal/conversations`).set(Date.now());
+    } catch (rtdbErr) {
+      console.error("[sendWhatsAppTextMessage] RTDB sync signal error:", rtdbErr);
     }
 
     return response;
@@ -963,49 +971,160 @@ export class CommunicationService {
 
     const response = await this.sendWhatsAppRequest(body);
 
-    if (response?.messages?.[0]?.id) {
-      let conversation = await communicationRepository.findConversationByWaId(formattedPhone);
-      let content = "";
-      if (type === "image") content = "📷 Foto";
-      else if (type === "audio") content = "🎙️ Áudio";
-      else if (type === "video") content = "🎥 Vídeo";
-      else if (type === "document") content = filename ? `📄 ${filename}` : "📄 Documento";
+    let conversation = await communicationRepository.findConversationByWaId(formattedPhone);
+    let content = "";
+    if (type === "image") content = "📷 Foto";
+    else if (type === "audio") content = "🎙️ Áudio";
+    else if (type === "video") content = "🎥 Vídeo";
+    else if (type === "document") content = filename ? `📄 ${filename}` : "📄 Documento";
 
-      if (!conversation) {
-        const user = await communicationRepository.findUserByPhone(formattedPhone);
-        conversation = await communicationRepository.createConversation({
-          waId: formattedPhone,
-          studentId: user?.id,
-          lastMessageContent: content,
-          lastMessageAt: new Date(),
-        });
-      } else {
-        await communicationRepository.updateConversation(conversation.id, {
-          lastMessageContent: content,
-          lastMessageAt: new Date(),
-        });
-      }
-
-      await communicationRepository.saveMessage({
-        id: response.messages[0].id,
-        conversationId: conversation.id,
-        content: content,
-        type: type,
-        direction: "outbound",
-        status: "sent",
-        metadata: { mediaUrl, mediaId: null, mimeType: type === "image" ? "image/jpeg" : type === "audio" ? "audio/ogg" : "application/octet-stream", filename },
+    if (!conversation) {
+      const user = await communicationRepository.findUserByPhone(formattedPhone);
+      conversation = await communicationRepository.createConversation({
+        waId: formattedPhone,
+        studentId: user?.id,
+        lastMessageContent: content,
+        lastMessageAt: new Date(),
       });
+    } else {
+      await communicationRepository.updateConversation(conversation.id, {
+        lastMessageContent: content,
+        lastMessageAt: new Date(),
+      });
+    }
 
-      // RTDB Signal for real-time update
-      try {
-        await adminRtdb.ref(`whatsapp_sync_signal/messages/${conversation.id}`).set(Date.now());
-        await adminRtdb.ref(`whatsapp_sync_signal/conversations`).set(Date.now());
-      } catch (rtdbErr) {
-        console.error("[sendWhatsAppMedia] RTDB sync signal error:", rtdbErr);
-      }
+    const isSuccess = !!response?.messages?.[0]?.id;
+    const msgId = isSuccess ? response!.messages[0].id : `failed_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const status = isSuccess ? "sent" : "failed";
+
+    await communicationRepository.saveMessage({
+      id: msgId,
+      conversationId: conversation.id,
+      content: content,
+      type: type,
+      direction: "outbound",
+      status: status,
+      metadata: { mediaUrl, mediaId: null, mimeType: type === "image" ? "image/jpeg" : type === "audio" ? "audio/ogg" : "application/octet-stream", filename },
+    });
+
+    // RTDB Signal for real-time update
+    try {
+      await adminRtdb.ref(`whatsapp_sync_signal/messages/${conversation.id}`).set(Date.now());
+      await adminRtdb.ref(`whatsapp_sync_signal/conversations`).set(Date.now());
+    } catch (rtdbErr) {
+      console.error("[sendWhatsAppMedia] RTDB sync signal error:", rtdbErr);
     }
 
     return response;
+  }
+
+  /**
+   * Tenta reenviar uma mensagem do WhatsApp que está com status "failed".
+   */
+  async resendWhatsAppMessage(messageId: string): Promise<{ success: boolean; messageId: string }> {
+    const msg = await communicationRepository.findMessageById(messageId);
+    if (!msg) {
+      throw new Error("Mensagem não encontrada.");
+    }
+
+    if (msg.direction !== "outbound") {
+      throw new Error("Apenas mensagens enviadas podem ser reenviadas.");
+    }
+
+    const conversation = await communicationRepository.findConversationByWaId(msg.conversationId);
+    let waId = conversation?.waId;
+
+    if (!waId) {
+      // Tentar por ID da tabela de conversas se o waId não foi retornado diretamente
+      const convRecord = await db.query.whatsappConversationsTable.findFirst({
+        where: eq(whatsappConversationsTable.id, msg.conversationId),
+      });
+      waId = convRecord?.waId;
+    }
+
+    if (!waId) {
+      throw new Error("Conversa não encontrada para este envio.");
+    }
+
+    const formattedPhone = this.getCleanPhone(waId);
+    let newResponse: WhatsAppResponse | null = null;
+
+    if (msg.type === "template" || msg.content?.startsWith("[Template:")) {
+      const meta = (msg.metadata as { templateName?: string; components?: unknown[]; languageCode?: string }) || {};
+      const templateName = meta.templateName || (msg.content?.match(/\[Template:\s*(.+?)\]/)?.[1]);
+
+      if (!templateName) {
+        throw new Error("Dados do template ausentes para reenvio.");
+      }
+
+      newResponse = await this.sendWhatsAppRequest({
+        messaging_product: "whatsapp",
+        to: formattedPhone,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: meta.languageCode || "pt_BR" },
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          components: (meta.components as any) || []
+        }
+      });
+    } else if (msg.type === "text") {
+      newResponse = await this.sendWhatsAppRequest({
+        messaging_product: "whatsapp",
+        to: formattedPhone,
+        type: "text",
+        text: { body: msg.content || "" }
+      });
+    } else if (["image", "audio", "document", "video"].includes(msg.type)) {
+      const meta = (msg.metadata as { mediaUrl?: string; filename?: string }) || {};
+      const mediaUrl = meta.mediaUrl;
+
+      if (!mediaUrl) {
+        throw new Error("URL da mídia ausente para reenvio.");
+      }
+
+      const body: WhatsAppRequestBody = {
+        messaging_product: "whatsapp",
+        to: formattedPhone,
+        type: msg.type as "image" | "audio" | "document" | "video",
+      };
+
+      if (msg.type === "document") body.document = { link: mediaUrl, filename: meta.filename };
+      else if (msg.type === "image") body.image = { link: mediaUrl };
+      else if (msg.type === "audio") body.audio = { link: mediaUrl };
+      else if (msg.type === "video") body.video = { link: mediaUrl };
+
+      newResponse = await this.sendWhatsAppRequest(body);
+    } else {
+      throw new Error(`Tipo de mensagem não suportado para reenvio: ${msg.type}`);
+    }
+
+    if (!newResponse?.messages?.[0]?.id) {
+      // Permanece como failed
+      await communicationRepository.updateMessageStatus(msg.id, "failed");
+      throw new Error("Falha ao reenviar mensagem via API do WhatsApp. Verifique o saldo/pagamento da Meta.");
+    }
+
+    const newMetaId = newResponse.messages[0].id;
+
+    // Atualiza a mensagem no banco com novo ID e status sent
+    await communicationRepository.replaceMessageIdAndStatus(msg.id, newMetaId, "sent");
+
+    // Atualiza a conversa
+    await communicationRepository.updateConversation(msg.conversationId, {
+      lastMessageContent: msg.content,
+      lastMessageAt: new Date(),
+    });
+
+    // Dispara sinal RTDB para sincronização em tempo real nas UIs
+    try {
+      await adminRtdb.ref(`whatsapp_sync_signal/messages/${msg.conversationId}`).set(Date.now());
+      await adminRtdb.ref(`whatsapp_sync_signal/conversations`).set(Date.now());
+    } catch (rtdbErr) {
+      console.error("[resendWhatsAppMessage] RTDB sync signal error:", rtdbErr);
+    }
+
+    return { success: true, messageId: newMetaId };
   }
 
   async getConversations(includeArchived: boolean = false) {

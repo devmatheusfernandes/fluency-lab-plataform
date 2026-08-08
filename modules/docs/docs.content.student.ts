@@ -99,13 +99,19 @@ export const STUDENT_DOCS: DocSection[] = [
       {
         id: "aluno-calendario",
         title: "Seu calendário de aulas",
-        summary: "Onde ver suas próximas aulas e entrar na videochamada.",
+        summary: "Onde ver suas próximas aulas e regras de tolerância de atraso.",
         route: "/hub/student/schedule",
-        keywords: ["agenda", "calendário", "aula", "horário", "videochamada", "entrar"],
+        keywords: ["agenda", "calendário", "aula", "horário", "videochamada", "entrar", "atraso"],
         blocks: [
           {
             type: "p",
             text: "O calendário mostra todas as suas aulas agendadas. Clique em uma aula para ver os detalhes, entrar na videochamada no horário, cancelar ou remarcar.",
+          },
+          {
+            type: "note",
+            variant: "warning",
+            title: "Tolerância de Atraso",
+            text: "Será tolerado um atraso máximo de até **15 minutos** para o início da aula. Excedido este prazo, o professor não estará mais obrigado a aguardar, sendo a aula considerada ministrada, faturada e sem direito a reposição.",
           },
           {
             type: "table",
@@ -116,8 +122,8 @@ export const STUDENT_DOCS: DocSection[] = [
               ["Concluída", "A aula aconteceu e foi registrada pelo professor."],
               ["Cancelada por você", "Você cancelou dentro do prazo permitido."],
               ["Cancelada pelo professor", "O professor precisou cancelar. Você recebe um crédito de reposição."],
-              ["Falta", "A aula não aconteceu e não houve aviso no prazo. Conta como aula dada."],
-              ["Recesso do professor", "Período de descanso avisado com antecedência pelo professor."],
+              ["Falta", "A aula não aconteceu, você cancelou fora do prazo ou se atrasou além da tolerância. Conta como aula dada."],
+              ["Recesso do professor", "Período de descanso avisado pelo professor. Você receberá uma atividade ou aula gravada para substituir o encontro e não interromper o cronograma."],
             ],
           },
         ],
@@ -166,8 +172,8 @@ export const STUDENT_DOCS: DocSection[] = [
           {
             type: "bullets",
             items: [
-              "**Limite:** você pode remarcar até **2 aulas por mês**. O contador zera todo mês.",
-              "**Prazo:** é preciso remarcar com pelo menos **4 horas** de antecedência. Passou disso, só dá para cancelar.",
+              "**Limite:** você pode remarcar até **2 aulas por mês civil**. Essas aulas não são cumulativas para os meses seguintes.",
+              "**Prazo:** é preciso remarcar com pelo menos **4 horas** de antecedência. Passou disso, só dá para cancelar (e contar como falta).",
               "**Só aulas agendadas:** aulas já concluídas, canceladas ou com falta não podem ser remarcadas.",
             ],
           },
@@ -232,7 +238,7 @@ export const STUDENT_DOCS: DocSection[] = [
         blocks: [
           {
             type: "p",
-            text: "A página de Pagamentos lista todas as parcelas do seu plano, com valor, vencimento e situação. A parcela em aberto traz o QR Code e o código copia e cola do PIX.",
+            text: "A página de Pagamentos lista todas as parcelas do seu plano, com valor, vencimento e situação. A parcela em aberto traz o QR Code e o código copia e cola do PIX. O vencimento ocorre sempre entre os dias 1º e 10º de cada mês.",
           },
           {
             type: "steps",
@@ -253,8 +259,8 @@ export const STUDENT_DOCS: DocSection[] = [
           {
             type: "note",
             variant: "info",
-            title: "O código venceu",
-            text: "Códigos PIX expiram. Se o seu não funciona mais, peça um novo à secretaria — a parcela continua a mesma, só o código é atualizado.",
+            title: "Reajuste Anual",
+            text: "Todo mês de julho a mensalidade é reajustada com base em índices de inflação (IPCA/IGPM). Você será avisado formalmente com 30 dias de antecedência pela plataforma.",
           },
         ],
       },
@@ -280,10 +286,10 @@ export const STUDENT_DOCS: DocSection[] = [
       },
       {
         id: "aluno-contrato",
-        title: "Seu contrato",
-        summary: "Onde ler e baixar o contrato que você assinou.",
+        title: "Seu contrato e recessos",
+        summary: "Onde ler o contrato, regras de recesso anual e quebras.",
         route: "/hub/student/contract",
-        keywords: ["contrato", "assinar", "pdf", "documento", "termos"],
+        keywords: ["contrato", "assinar", "pdf", "documento", "termos", "férias", "recesso"],
         blocks: [
           {
             type: "p",
@@ -292,8 +298,14 @@ export const STUDENT_DOCS: DocSection[] = [
           {
             type: "note",
             variant: "info",
+            title: "Recesso Pedagógico de Fim de Ano",
+            text: "A escola adota um recesso anual obrigatório durante as **duas últimas semanas de dezembro e as duas primeiras de janeiro**. As aulas ao vivo são suspensas, mas as **mensalidades devem ser pagas de forma integral**, sem descontos. Você poderá optar por receber atividades assíncronas no período.",
+          },
+          {
+            type: "note",
+            variant: "warning",
             title: "Cancelamento antes do fim",
-            text: "O contrato define o que acontece se você encerrar a matrícula antes do prazo. Encerrando no meio do contrato, há uma taxa de cancelamento; estando na última parcela, não há taxa.",
+            text: "Encerrando a matrícula no meio do prazo contratual (exige aviso de 15 dias úteis), há uma taxa de rescisão compensatória de **50% do valor total da mensalidade subsequente**. Em caso de rescisão por indisciplina, o desligamento é imediato.",
           },
         ],
       },
@@ -433,6 +445,24 @@ export const STUDENT_DOCS: DocSection[] = [
         ],
       },
       {
+        id: "aluno-direitos-imagem",
+        title: "Gravações e Direitos de Imagem",
+        summary: "Regras sobre gravações de aulas e uso do material.",
+        keywords: ["gravação", "gravar", "direitos", "material", "compartilhar", "proibido", "pirataria"],
+        blocks: [
+          {
+            type: "p",
+            text: "Para fins de controle de qualidade pedagógica, treinamento da equipe e segurança, as aulas transmitidas por videoconferência poderão ser gravadas pela escola, sob uso interno exclusivo.",
+          },
+          {
+            type: "note",
+            variant: "danger",
+            title: "Proibição de Gravação e Compartilhamento",
+            text: "Fica **terminantemente proibida** a gravação das videoconferências por parte do aluno, bem como a cópia ou distribuição do material didático fornecido. O descumprimento gera rescisão imediata por justa causa e responsabilização por perdas e danos.",
+          },
+        ],
+      },
+      {
         id: "aluno-dados",
         title: "Seus dados e privacidade",
         summary: "O que a escola guarda e quais são os seus direitos.",
@@ -489,7 +519,7 @@ export const STUDENT_DOCS: DocSection[] = [
         id: "aluno-videochamada",
         title: "A videochamada não funciona",
         summary: "Câmera, microfone e problemas de conexão.",
-        keywords: ["câmera", "microfone", "áudio", "vídeo", "chamada", "não abre", "travando"],
+        keywords: ["câmera", "microfone", "áudio", "vídeo", "chamada", "não abre", "travando", "internet"],
         blocks: [
           {
             type: "steps",
@@ -502,8 +532,14 @@ export const STUDENT_DOCS: DocSection[] = [
           },
           {
             type: "note",
+            variant: "warning",
+            title: "Responsabilidade pela conexão",
+            text: "Conforme contrato, a escola **não se responsabiliza** pela qualidade técnica da aula decorrente de falhas em equipamentos, conexões de internet lentas ou instáveis por parte do aluno. Caso você não consiga participar por falha da sua internet, a aula será contabilizada como dada, sem direito a reposição.",
+          },
+          {
+            type: "note",
             variant: "info",
-            text: "Se nada resolver na hora da aula, avise seu professor pelo WhatsApp da escola para não perder o horário.",
+            text: "Se nada resolver na hora da aula, avise seu professor pelo WhatsApp da escola para tentar receber alguma ajuda.",
           },
         ],
       },
