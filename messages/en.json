@@ -1738,6 +1738,10 @@
     "retry": "Try again",
     "title": "You are offline"
   },
+  "OfflineBanner": {
+    "message": "You are offline. Some actions may not work until connection is restored.",
+    "queued": "{count, plural, one {# activity waiting to sync} other {# activities waiting to sync}}"
+  },
   "Onboarding": {
     "address": {
       "cellphone": "Cellphone",

@@ -21,6 +21,7 @@ function urlBase64ToUint8Array(base64String: string) {
 import { useDeviceStore, type BeforeInstallPromptEvent } from "@/hooks/ui/use-device";
 import { useUserStore } from "@/modules/user/user.store";
 import { usePathname } from "next/navigation";
+import { useOfflineSync } from "@/hooks/offline/use-offline-sync";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -28,6 +29,10 @@ export function PwaHandler() {
   const { registration, setDeferredPrompt, setUpdateAvailable, setRegistration, setStandalone, setIsMobile, isStandalone } = useDeviceStore();
   const user = useUserStore((state) => state.user);
   const pathname = usePathname();
+
+  // Activates online/offline detection, auto-sync on reconnect, and
+  // background-sync message handling for the offline practice queue.
+  useOfflineSync();
 
   useEffect(() => {
     if (typeof window === "undefined") return;

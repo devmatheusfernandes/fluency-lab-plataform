@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { notify } from "@/components/ui/toaster";
@@ -16,7 +16,7 @@ import { PracticeSummary } from "./PracticeSummary";
 import { PracticeExitVault } from "./PracticeExitVault";
 
 import { processSessionResultsAction } from "@/modules/learning/learning.actions";
-import { queuePracticeResult, flushPracticeQueue } from "@/modules/learning/learning.offline";
+import { useOfflineSyncStore } from "@/hooks/offline/use-offline-sync";
 
 import type { PracticeItem, PracticeResult, DailyPracticeSession } from "@/modules/learning/learning.types";
 
@@ -43,6 +43,7 @@ const SLIDE_VARIANTS = {
 
 export function PracticeSession({ session, planId, currentStreak, isReplay = false }: PracticeSessionProps) {
   const router = useRouter();
+  const savePractice = useOfflineSyncStore((state) => state.savePractice);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<PracticeResult[]>([]);
   const [feedback, setFeedback] = useState<FeedbackState>({ isOpen: false, isCorrect: false });
@@ -56,26 +57,20 @@ export function PracticeSession({ session, planId, currentStreak, isReplay = fal
   const currentItem = items[currentIndex];
   const progress = items.length > 0 ? (currentIndex / items.length) * 100 : 0;
 
-  // Flush offline queue on mount (if online)
-  useEffect(() => {
-    if (navigator.onLine) {
-      flushPracticeQueue().catch(console.error);
-    }
-  }, []);
+  // Note: queue flushing on reconnect is handled globally by useOfflineSync
+  // (mounted in PwaHandler), so no per-component flush-on-mount is needed here.
 
   const recordResult = useCallback(async (result: PracticeResult) => {
     setResults((prev) => [...prev, result]);
 
-    if (!navigator.onLine) {
-      await queuePracticeResult({
-        itemId: result.itemId,
-        lessonId: result.lessonId,
-        grade: result.grade,
-        type: result.type,
-        timestamp: result.timestamp,
-      });
-    }
-  }, []);
+    // No-ops when online; queues to IndexedDB and registers a Background Sync
+    // tag when offline, so the result survives even if the app is closed.
+    await savePractice({
+      itemId: result.itemId,
+      lessonId: result.lessonId,
+      quality: result.grade,
+    });
+  }, [savePractice]);
 
   const finishSession = useCallback(async () => {
     setIsProcessing(true);

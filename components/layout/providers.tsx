@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { PwaHandler } from "./pwa-handler";
+import { OfflineBanner } from "./offline-banner";
 import { NotificationPermissionVault } from "@/modules/notification/_components/NotificationPermissionVault";
 import { PwaVault } from "@/modules/pwa/_components/PwaVault";
 import { ThemeColorUpdater } from "./theme-color-updater";
@@ -55,6 +56,7 @@ export function Providers({ children, locale, messages, themeMode, nonce }: Prov
           </TooltipProvider>
         </SWRConfig>
         <Toaster />
+        <OfflineBanner />
         <PwaHandler />
         <ThemeColorUpdater />
         <PwaSplash />
