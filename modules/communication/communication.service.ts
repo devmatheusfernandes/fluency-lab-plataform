@@ -35,6 +35,7 @@ import {
   PlanChangedEmail,
 } from "./templates/ContractStatusEmails";
 import { ScheduleAlertEmail } from "./templates/ScheduleAlertEmail";
+import { TeacherRecessStudentEmail } from "./templates/TeacherRecessStudentEmail";
 import { CertificateEmail } from "./templates/CertificateEmail";
 import { FarewellEmail } from "./templates/FarewellEmail";
 import { PasswordResetRequestEmail } from "./templates/PasswordResetRequestEmail";
@@ -342,6 +343,27 @@ export class CommunicationService {
       });
     } catch (error) {
       console.error("[CommunicationService.sendScheduleAlertEmail] Error:", error);
+    }
+  }
+
+  async sendTeacherRecessStudentEmail(
+    email: string,
+    data: {
+      studentName: string;
+      teacherName: string;
+      startDate: string;
+      endDate: string;
+      fallbackLessonTitle: string;
+    }
+  ) {
+    try {
+      await this.sendEmail({
+        to: email,
+        subject: `\uD83D\uDCE2 Aviso de recesso: ${data.teacherName}`,
+        template: React.createElement(TeacherRecessStudentEmail, data),
+      });
+    } catch (error) {
+      console.error("[CommunicationService.sendTeacherRecessStudentEmail] Error:", error);
     }
   }
 
@@ -760,6 +782,47 @@ export class CommunicationService {
       });
     } catch (error) {
       console.error("[CommunicationService.sendStudentClassScheduledWhatsApp] Error:", error);
+    }
+  }
+
+  /**
+   * Avisa o aluno via WhatsApp que o professor entrará em recesso.
+   */
+  async sendTeacherRecessStudentWhatsApp(
+    cellphone: string,
+    explicitLocale: "pt" | "en",
+    data: {
+      studentName: string;
+      teacherName: string;
+      startDate: Date;
+      endDate: Date;
+      fallbackLessonTitle: string;
+    }
+  ) {
+    try {
+      const languageCode = explicitLocale === "en" ? "en" : "pt_BR";
+      const fmt = (d: Date) =>
+        explicitLocale === "pt" ? d.toLocaleDateString("pt-BR") : d.toLocaleDateString("en-US");
+
+      return await this.sendWhatsAppTemplate({
+        to: cellphone,
+        templateName: "teacher_recess_student_v1",
+        languageCode,
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: data.studentName },
+              { type: "text", text: data.teacherName },
+              { type: "text", text: fmt(data.startDate) },
+              { type: "text", text: fmt(data.endDate) },
+              { type: "text", text: data.fallbackLessonTitle },
+            ]
+          }
+        ]
+      });
+    } catch (error) {
+      console.error("[CommunicationService.sendTeacherRecessStudentWhatsApp] Error:", error);
     }
   }
 

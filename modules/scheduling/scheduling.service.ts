@@ -328,7 +328,7 @@ export const schedulingService = {
 
       // 3b. Assign student to teacher-recess slots too (student keeps teacher-recess status)
       // This ensures the student can see that their slot exists but prof is on recess
-      await tx.update(slotInstances)
+      const recessSlotsAssigned = await tx.update(slotInstances)
         .set({
           studentId,
           updatedAt: now
@@ -341,7 +341,39 @@ export const schedulingService = {
             gte(slotInstances.startAt, startAllocationFrom),
             lt(slotInstances.startAt, horizon)
           )
-        );
+        )
+        .returning({
+          id: slotInstances.id,
+          startAt: slotInstances.startAt,
+          fallbackLessonId: slotInstances.fallbackLessonId,
+          fallbackLessonTitle: slotInstances.fallbackLessonTitle,
+        });
+
+      // Slots que já estavam em recesso antes deste aluno existir nunca tiveram lição de
+      // fallback definida (só era setada para alunos já alocados no momento do recesso).
+      // Faz o backfill com a mesma lição padrão usada no auto-preenchimento da UI de recesso,
+      // garantindo que nenhuma aula em recesso fique sem fallback.
+      let backfillLessonTitle: string | null = null;
+      const idsMissingFallback = recessSlotsAssigned.filter(s => !s.fallbackLessonId).map(s => s.id);
+      if (idsMissingFallback.length > 0) {
+        const recessActivities = await curriculumService.getRecessActivities(rule.teacherId);
+        const defaultActivity = recessActivities[0];
+        if (defaultActivity) {
+          backfillLessonTitle = defaultActivity.title;
+          await tx.update(slotInstances)
+            .set({
+              fallbackLessonId: defaultActivity.id,
+              fallbackLessonTitle: defaultActivity.title,
+              updatedAt: now,
+            })
+            .where(inArray(slotInstances.id, idsMissingFallback));
+        }
+      }
+
+      const recessSlotDates = recessSlotsAssigned.map(s => s.startAt);
+      const recessFallbackTitle = backfillLessonTitle
+        ?? recessSlotsAssigned.find(s => s.fallbackLessonTitle)?.fallbackLessonTitle
+        ?? "Atividade de recesso";
 
       // 4. Generate missing slots if teacher schedule doesn't reach horizon
       // We pass studentId to ensure newly created slots are correctly attributed
@@ -378,7 +410,7 @@ export const schedulingService = {
         channels: { inApp: true, push: true },
       });
 
-      return { success: true, firstClassDate };
+      return { success: true, firstClassDate, recessSlotDates, recessFallbackTitle };
     });
 
     if (result.success) {
@@ -386,6 +418,12 @@ export const schedulingService = {
       this.sendAllocationWhatsAppNotifications(student, rule, firstClassDate).catch((err) =>
         console.error("[allocateStudentToRule] WhatsApp notification error:", err)
       );
+
+      if (result.recessSlotDates.length > 0) {
+        this.notifyNewlyAllocatedStudentOfRecess(student, rule.teacherId, result.recessSlotDates, result.recessFallbackTitle).catch((err) =>
+          console.error("[allocateStudentToRule] Recess notification error:", err)
+        );
+      }
     }
 
     return result;
@@ -2009,14 +2047,96 @@ export const schedulingService = {
     return await schedulingRepository.findRecessesByTeacher(teacherId);
   },
 
+  /**
+   * Avisa um aluno afetado por um recesso do professor por todos os canais
+   * disponíveis (in-app, push, e-mail e WhatsApp). Cada canal é isolado em
+   * try/catch para que a falha de um não impeça os demais.
+   */
+  async notifyStudentOfRecess(
+    student: { id: string; name: string; email: string; cellphone: string | null; locale?: string | null },
+    teacherName: string,
+    startDate: Date,
+    endDate: Date,
+    fallbackLessonTitle: string
+  ) {
+    const locale: "pt" | "en" = student.locale === "en" ? "en" : "pt";
+    const dateFmt = locale === "pt" ? "dd/MM/yyyy" : "MM/dd/yyyy";
+
+    try {
+      await notificationService.sendNotification({
+        title: "📢 Aviso de Recesso",
+        body: `Seu professor(a) ${teacherName} estará de recesso de ${format(startDate, "dd/MM")} a ${format(endDate, "dd/MM")}. Confira a atividade preparada para você.`,
+        targetType: "specific",
+        userIds: [student.id],
+        channels: { inApp: true, push: true },
+        category: "classes",
+      });
+    } catch (err) {
+      console.error("[notifyStudentOfRecess] in-app/push error:", err);
+    }
+
+    if (student.email) {
+      try {
+        await communicationService.sendTeacherRecessStudentEmail(student.email, {
+          studentName: student.name,
+          teacherName,
+          startDate: format(startDate, dateFmt),
+          endDate: format(endDate, dateFmt),
+          fallbackLessonTitle,
+        });
+      } catch (err) {
+        console.error("[notifyStudentOfRecess] email error:", err);
+      }
+    }
+
+    if (student.cellphone) {
+      try {
+        const phone = student.cellphone.includes(":") ? decrypt(student.cellphone) : student.cellphone;
+        await communicationService.sendTeacherRecessStudentWhatsApp(phone, locale, {
+          studentName: student.name,
+          teacherName,
+          startDate,
+          endDate,
+          fallbackLessonTitle,
+        });
+      } catch (err) {
+        console.error("[notifyStudentOfRecess] whatsapp error:", err);
+      }
+    }
+  },
+
+  /**
+   * Quando um aluno é alocado numa regra que já tem slots futuros em `teacher-recess`
+   * (o professor já havia agendado um recesso antes de este aluno existir/ser alocado),
+   * avisa o aluno recém-alocado sobre o(s) recesso(s) que sobrepõem seus novos horários.
+   */
+  async notifyNewlyAllocatedStudentOfRecess(
+    student: User,
+    teacherId: string,
+    slotDates: Date[],
+    fallbackLessonTitle: string
+  ) {
+    const minDate = new Date(Math.min(...slotDates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...slotDates.map(d => d.getTime())));
+
+    const teacherRecesses = await schedulingRepository.findRecessesByTeacher(teacherId);
+    const overlapping = teacherRecesses.filter(r => minDate <= r.endDate && maxDate >= r.startDate);
+    if (overlapping.length === 0) return;
+
+    const teacher = await userService.getUserById(teacherId);
+    for (const recess of overlapping) {
+      await this.notifyStudentOfRecess(student, teacher?.name || "", recess.startDate, recess.endDate, fallbackLessonTitle);
+    }
+  },
+
   async registerRecess(
-    user: User, 
+    user: User,
     data: { startDate: Date; endDate: Date; fallbackConfig: Record<string, { lessonId: string; lessonTitle?: string; message?: string }> }
   ) {
     const startDate = getLocalMidnight(data.startDate);
     const endDate = getLocalEndOfDay(data.endDate);
     const { fallbackConfig } = data;
-    
+
     // Re-validate overlap at registration
     const existingRecesses = await schedulingRepository.findRecessesByTeacher(user.id);
     const hasOverlap = existingRecesses.some(r => {
@@ -2025,11 +2145,30 @@ export const schedulingService = {
 
     if (hasOverlap) throw new Error("Período de recesso sobreposto detectado.");
 
+    const classesInRange = await schedulingRepository.findByTeacherInRange(user.id, startDate, endDate);
+    const scheduledWithStudent = classesInRange.filter(cls => cls.status === "scheduled" && cls.studentId);
+
+    // Toda aula com aluno agendado precisa de uma lição de fallback definida
+    const missingFallback = scheduledWithStudent.some(cls => !fallbackConfig[cls.id]?.lessonId);
+    if (missingFallback) {
+      throw new Error("Defina uma lição de fallback para todas as aulas afetadas antes de confirmar o recesso.");
+    }
+
+    // Resolve os títulos das lições uma única vez (cacheado por lessonId)
+    const lessonTitleCache = new Map<string, string | null>();
+    for (const cls of classesInRange) {
+      const lessonId = fallbackConfig[cls.id]?.lessonId;
+      if (lessonId && !lessonTitleCache.has(lessonId)) {
+        const lesson = await curriculumService.findLessonById(lessonId);
+        lessonTitleCache.set(lessonId, lesson?.title || null);
+      }
+    }
+
     const now = new Date();
     const daysAdvance = differenceInCalendarDays(startDate, now);
     const isAutomatic = daysAdvance >= 20;
 
-    return await db.transaction(async (tx) => {
+    const request = await db.transaction(async (tx) => {
       // 1. Create Recess Request
       const [request] = await tx.insert(recessRequestsTable).values({
         teacherId: user.id,
@@ -2039,16 +2178,10 @@ export const schedulingService = {
         fallbackConfig,
       }).returning();
 
-      // 2. Get affected classes
-      const affectedClasses = await schedulingRepository.findByTeacherInRange(user.id, startDate, endDate);
-
-      for (const cls of affectedClasses) {
+      // 2. Update affected classes
+      for (const cls of classesInRange) {
         const config = fallbackConfig[cls.id];
-        let lessonTitle: string | null = null;
-        if (config?.lessonId) {
-          const lesson = await curriculumService.findLessonById(config.lessonId);
-          lessonTitle = lesson?.title || null;
-        }
+        const lessonTitle = config?.lessonId ? (lessonTitleCache.get(config.lessonId) ?? null) : null;
 
         // 3. Marcar o slot in-place como teacher-recess e linkar o conteúdo de fallback
         await tx.update(slotInstances)
@@ -2086,6 +2219,29 @@ export const schedulingService = {
 
       return request;
     });
+
+    // 6. Notify affected students by every channel (network I/O — kept outside the DB transaction)
+    const studentIds = Array.from(new Set(scheduledWithStudent.map(cls => cls.studentId!)));
+    for (const studentId of studentIds) {
+      try {
+        const student = await userService.getUserById(studentId);
+        if (!student) continue;
+
+        const studentClasses = scheduledWithStudent.filter(cls => cls.studentId === studentId);
+        const titles = Array.from(new Set(
+          studentClasses
+            .map(cls => lessonTitleCache.get(fallbackConfig[cls.id].lessonId))
+            .filter((title): title is string => Boolean(title))
+        ));
+        const fallbackLessonTitle = titles.join(", ") || "Atividade de recesso";
+
+        await this.notifyStudentOfRecess(student, user.name, startDate, endDate, fallbackLessonTitle);
+      } catch (err) {
+        console.error("[registerRecess] Error notifying student about recess:", err);
+      }
+    }
+
+    return request;
   },
 
   async getTeacherClasses(teacherId: string, startDate: Date, endDate: Date) {

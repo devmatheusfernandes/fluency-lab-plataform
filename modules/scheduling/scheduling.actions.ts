@@ -573,7 +573,7 @@ export const confirmRecessAction = protectedAction
     startDate: z.date(),
     endDate: z.date(),
     fallbackConfig: z.record(z.string(), z.object({
-      lessonId: z.string(),
+      lessonId: z.string().min(1, "Selecione uma lição de fallback"),
       message: z.string().optional(),
     })),
   }))
